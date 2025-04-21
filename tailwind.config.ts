@@ -52,6 +52,12 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// MedSnap custom colors
+				medsnap: {
+					blue: '#3B82F6',   // Calm Blue
+					green: '#86EFAC',  // Soft Green
+					grey: '#F3F4F6',   // Light Grey
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

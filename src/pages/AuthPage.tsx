@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,7 +25,7 @@ export default function AuthPage() {
       if (error) {
         setError(error);
       } else {
-        navigate("/dashboard");
+        navigate("/profile-setup");
       }
     } else {
       const { error } = await signIn(email, password);

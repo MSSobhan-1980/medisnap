@@ -10,6 +10,7 @@ import ScanPage from "./pages/ScanPage";
 import DashboardPage from "./pages/DashboardPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProfilePage from "./pages/ProfilePage";
+import ProfileSetupPage from "@/pages/ProfileSetupPage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/pages/AuthPage";
@@ -26,6 +27,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Layout isLanding={true}><LandingPage /></Layout>} />
             <Route path="/auth" element={<Layout isLanding={true}><AuthPage /></Layout>} />
+            <Route path="/profile-setup" element={<Layout><ProfileSetupPage /></Layout>} />
             <Route path="/home" element={<Layout><HomePage /></Layout>} />
             <Route path="/scan" element={<Layout><ScanPage /></Layout>} />
             <Route path="/dashboard" element={<Layout><DashboardPage /></Layout>} />

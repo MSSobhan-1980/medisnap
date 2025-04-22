@@ -1,8 +1,9 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, UserRound, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   isLanding?: boolean;
@@ -10,6 +11,8 @@ interface HeaderProps {
 
 export default function Header({ isLanding = false }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, signOut, loading } = useAuth();
+  const navigate = useNavigate();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -23,9 +26,26 @@ export default function Header({ isLanding = false }: HeaderProps) {
           <span className="font-bold text-2xl text-gray-800">Snap</span>
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          {isLanding ? (
+          {user ? (
+            <>
+              <NavLinks />
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                </Button>
+                <Link to="/profile">
+                  <Button variant="outline" size="icon">
+                    <UserRound className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <Button variant="destructive" size="sm" onClick={async () => { await signOut(); navigate("/auth"); }}>
+                  Log Out
+                </Button>
+              </div>
+            </>
+          ) : isLanding ? (
             <>
               <Link to="/" className="text-gray-700 hover:text-blue-500 font-medium">
                 Home
@@ -49,21 +69,14 @@ export default function Header({ isLanding = false }: HeaderProps) {
             <>
               <NavLinks />
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-                </Button>
-                <Link to="/profile">
-                  <Button variant="outline" size="icon">
-                    <UserRound className="h-5 w-5" />
-                  </Button>
+                <Link to="/auth">
+                  <Button variant="outline" size="sm">Sign In</Button>
                 </Link>
               </div>
             </>
           )}
         </nav>
 
-        {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center">
           <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -71,7 +84,6 @@ export default function Header({ isLanding = false }: HeaderProps) {
         </div>
       </div>
 
-      {/* Mobile Navigation */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white shadow-md">
           <div className="container mx-auto px-4 py-2 flex flex-col space-y-2">
@@ -138,7 +150,6 @@ export default function Header({ isLanding = false }: HeaderProps) {
   );
 }
 
-// Desktop Navigation Links for the app
 const NavLinks = () => {
   return (
     <>
@@ -158,7 +169,6 @@ const NavLinks = () => {
   );
 };
 
-// Mobile Navigation Links for the app
 const MobileNavLinks = ({ closeMenu }: { closeMenu: () => void }) => {
   return (
     <>

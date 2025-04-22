@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRound, Settings, CreditCard, Calendar, Users } from "lucide-react";
@@ -12,19 +13,19 @@ import {
 } from "@/components/ui/avatar";
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user: authUser, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !authUser) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [authUser, loading, navigate]);
 
   const [activeTab, setActiveTab] = useState("account");
 
   // Mock user data
-  const user = {
+  const userData = {
     name: "Jane Smith",
     email: "jane.smith@example.com",
     avatar: "",
@@ -35,6 +36,10 @@ export default function ProfilePage() {
     ]
   };
 
+  // If we have real user data from auth, override some mock values
+  const displayName = authUser?.user_metadata?.full_name || userData.name;
+  const displayEmail = authUser?.email || userData.email;
+  
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-gray-800">Your Profile</h1>
@@ -44,17 +49,17 @@ export default function ProfilePage() {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarImage src={userData.avatar} alt={displayName} />
               <AvatarFallback className="text-2xl bg-medsnap-blue text-white">
-                {user.name.split(' ').map(n => n[0]).join('')}
+                {displayName.split(' ').map(n => n[0]).join('')}
               </AvatarFallback>
             </Avatar>
             
             <div className="space-y-1 text-center md:text-left">
-              <h2 className="text-2xl font-bold">{user.name}</h2>
-              <p className="text-gray-500">{user.email}</p>
+              <h2 className="text-2xl font-bold">{displayName}</h2>
+              <p className="text-gray-500">{displayEmail}</p>
               <div className="inline-block bg-medsnap-grey px-3 py-1 rounded-full text-sm font-medium mt-2">
-                {user.plan}
+                {userData.plan}
               </div>
             </div>
             
@@ -94,11 +99,11 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                       <label className="text-sm font-medium text-gray-500 block mb-1">Name</label>
-                      <div className="text-gray-900">{user.name}</div>
+                      <div className="text-gray-900">{displayName}</div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500 block mb-1">Email</label>
-                      <div className="text-gray-900">{user.email}</div>
+                      <div className="text-gray-900">{displayEmail}</div>
                     </div>
                   </div>
                 </div>
@@ -142,7 +147,7 @@ export default function ProfilePage() {
                   <div className="mt-4 p-4 border rounded-lg">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                       <div>
-                        <h4 className="font-semibold text-xl">{user.plan}</h4>
+                        <h4 className="font-semibold text-xl">{userData.plan}</h4>
                         <p className="text-gray-500 mt-1">
                           Basic features with limited medication scanning
                         </p>
@@ -283,7 +288,7 @@ export default function ProfilePage() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {user.patients.map((patient) => (
+                  {userData.patients.map((patient) => (
                     <Card key={patient.id} className="border">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">

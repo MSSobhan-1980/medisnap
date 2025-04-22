@@ -4,7 +4,11 @@ import { Link } from "react-router-dom";
 import { Menu, X, UserRound, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function Header() {
+interface HeaderProps {
+  isLanding?: boolean;
+}
+
+export default function Header({ isLanding = false }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -12,29 +16,51 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto py-4 px-4 flex justify-between items-center">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="bg-medsnap-blue text-white rounded-md p-1">
-            <span className="font-bold text-xl">Med</span>
-            <span className="font-medium text-xl">Snap</span>
-          </div>
+    <header className={`${isLanding ? 'bg-white py-5' : 'bg-white shadow-sm sticky top-0 z-50'}`}>
+      <div className="container mx-auto py-2 px-4 flex justify-between items-center">
+        <Link to="/" className="flex items-center gap-1">
+          <span className="font-bold text-2xl text-blue-500">Med</span>
+          <span className="font-bold text-2xl text-gray-800">Snap</span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
-          <NavLinks />
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-            </Button>
-            <Link to="/profile">
-              <Button variant="outline" size="icon">
-                <UserRound className="h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
+          {isLanding ? (
+            <>
+              <Link to="/" className="text-gray-700 hover:text-blue-500 font-medium">
+                Home
+              </Link>
+              <Link to="/features" className="text-gray-700 hover:text-blue-500 font-medium">
+                Features
+              </Link>
+              <Link to="/pricing" className="text-gray-700 hover:text-blue-500 font-medium">
+                Pricing
+              </Link>
+              <Link to="/sign-in" className="text-gray-700 hover:text-blue-500 font-medium">
+                Sign In
+              </Link>
+              <Link to="/dashboard">
+                <Button className="bg-blue-500 hover:bg-blue-600">
+                  Get Started
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <NavLinks />
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                </Button>
+                <Link to="/profile">
+                  <Button variant="outline" size="icon">
+                    <UserRound className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
         </nav>
 
         {/* Mobile Menu Button */}
@@ -49,20 +75,62 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white shadow-md">
           <div className="container mx-auto px-4 py-2 flex flex-col space-y-2">
-            <MobileNavLinks closeMenu={() => setMobileMenuOpen(false)} />
-            <hr className="my-2" />
-            <div className="flex items-center justify-between py-2">
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="outline" className="w-full flex items-center gap-2">
-                  <UserRound className="h-5 w-5" />
-                  Profile
-                </Button>
-              </Link>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-              </Button>
-            </div>
+            {isLanding ? (
+              <>
+                <Link 
+                  to="/" 
+                  className="text-gray-700 hover:text-blue-500 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Home
+                </Link>
+                <Link 
+                  to="/features" 
+                  className="text-gray-700 hover:text-blue-500 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Features
+                </Link>
+                <Link 
+                  to="/pricing" 
+                  className="text-gray-700 hover:text-blue-500 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+                <Link 
+                  to="/sign-in" 
+                  className="text-gray-700 hover:text-blue-500 font-medium py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  to="/dashboard" 
+                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md text-center"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Get Started
+                </Link>
+              </>
+            ) : (
+              <>
+                <MobileNavLinks closeMenu={() => setMobileMenuOpen(false)} />
+                <hr className="my-2" />
+                <div className="flex items-center justify-between py-2">
+                  <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full flex items-center gap-2">
+                      <UserRound className="h-5 w-5" />
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -70,54 +138,54 @@ export default function Header() {
   );
 }
 
-// Desktop Navigation Links
+// Desktop Navigation Links for the app
 const NavLinks = () => {
   return (
     <>
-      <Link to="/" className="text-gray-700 hover:text-medsnap-blue font-medium">
+      <Link to="/" className="text-gray-700 hover:text-blue-500 font-medium">
         Home
       </Link>
-      <Link to="/scan" className="text-gray-700 hover:text-medsnap-blue font-medium">
+      <Link to="/scan" className="text-gray-700 hover:text-blue-500 font-medium">
         Scan Medication
       </Link>
-      <Link to="/dashboard" className="text-gray-700 hover:text-medsnap-blue font-medium">
+      <Link to="/dashboard" className="text-gray-700 hover:text-blue-500 font-medium">
         Dashboard
       </Link>
-      <Link to="/reports" className="text-gray-700 hover:text-medsnap-blue font-medium">
+      <Link to="/reports" className="text-gray-700 hover:text-blue-500 font-medium">
         Reports
       </Link>
     </>
   );
 };
 
-// Mobile Navigation Links
+// Mobile Navigation Links for the app
 const MobileNavLinks = ({ closeMenu }: { closeMenu: () => void }) => {
   return (
     <>
       <Link 
         to="/" 
-        className="text-gray-700 hover:text-medsnap-blue font-medium py-2"
+        className="text-gray-700 hover:text-blue-500 font-medium py-2"
         onClick={closeMenu}
       >
         Home
       </Link>
       <Link 
         to="/scan" 
-        className="text-gray-700 hover:text-medsnap-blue font-medium py-2"
+        className="text-gray-700 hover:text-blue-500 font-medium py-2"
         onClick={closeMenu}
       >
         Scan Medication
       </Link>
       <Link 
         to="/dashboard" 
-        className="text-gray-700 hover:text-medsnap-blue font-medium py-2"
+        className="text-gray-700 hover:text-blue-500 font-medium py-2"
         onClick={closeMenu}
       >
         Dashboard
       </Link>
       <Link 
         to="/reports" 
-        className="text-gray-700 hover:text-medsnap-blue font-medium py-2"
+        className="text-gray-700 hover:text-blue-500 font-medium py-2"
         onClick={closeMenu}
       >
         Reports

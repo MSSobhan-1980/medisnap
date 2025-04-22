@@ -1,11 +1,12 @@
-
 import { useState } from "react";
-import { Upload, Camera, X, PlusCircle } from "lucide-react";
+import { Upload, Camera, X, PlusCircle, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import MedicationImageUpload from "@/components/MedicationImageUpload";
+import MedicationImageGallery from "@/components/MedicationImageGallery";
 
 export default function ScanPage() {
   const [activeTab, setActiveTab] = useState("scan");
@@ -50,12 +51,15 @@ export default function ScanPage() {
       </p>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 mb-8">
+        <TabsList className="grid w-full grid-cols-3 mb-8">
           <TabsTrigger value="scan">
             <Camera className="mr-2 h-4 w-4" /> Scan Medication
           </TabsTrigger>
           <TabsTrigger value="manual">
             <PlusCircle className="mr-2 h-4 w-4" /> Manual Entry
+          </TabsTrigger>
+          <TabsTrigger value="gallery">
+            <Images className="mr-2 h-4 w-4" /> My Images
           </TabsTrigger>
         </TabsList>
         
@@ -68,6 +72,7 @@ export default function ScanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <MedicationImageUpload />
               {!image ? (
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50">
                   <div className="mb-4">
@@ -259,6 +264,20 @@ export default function ScanPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="gallery">
+          <Card>
+            <CardHeader>
+              <CardTitle>My Medication Images</CardTitle>
+              <CardDescription>
+                View and manage your uploaded medication images
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MedicationImageGallery />
             </CardContent>
           </Card>
         </TabsContent>

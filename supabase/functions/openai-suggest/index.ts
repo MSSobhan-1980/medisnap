@@ -10,13 +10,24 @@ const corsHeaders = {
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Basic authentication check
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { text } = await req.json();
 
+    console.log("Sending request to OpenAI");
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -36,6 +47,12 @@ serve(async (req) => {
       }),
     });
 
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("OpenAI API error:", response.status, errorData);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
     const data = await response.json();
     const raw = data?.choices?.[0]?.message?.content || "";
 
@@ -48,10 +65,12 @@ serve(async (req) => {
       extracted = { raw };
     }
 
+    console.log("AI analysis completed successfully");
     return new Response(JSON.stringify({ result: extracted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error("Error in openai-suggest function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -8,17 +8,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
+import { supabase } from "@/integrations/supabase/client";
 
 async function callEdgeFn(path: string, body: Record<string, any>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+  
   const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error("API error");
+  
+  if (!res.ok) {
+    const errorData = await res.text();
+    console.error("API Error:", res.status, errorData);
+    throw new Error(`API error: ${res.status} ${errorData}`);
+  }
+  
   return res.json();
 }
 
@@ -71,6 +82,7 @@ export default function ScanPage() {
       toast.success("Medication info extracted!");
     } catch (err: any) {
       toast.error(err?.message || "Failed to extract prescription info.");
+      console.error("Error scanning:", err);
     } finally {
       setScanning(false);
     }

@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { useState } from "react";
 import { Upload, Camera, X, PlusCircle, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,39 +9,71 @@ import { Label } from "@/components/ui/label";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
 
+async function callEdgeFn(path: string, body: Record<string, any>) {
+  const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("API error");
+  return res.json();
+}
+
 export default function ScanPage() {
   const [activeTab, setActiveTab] = useState("scan");
   const [image, setImage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [ocrResult, setOcrResult] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<any>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();
-      
+
       reader.onload = () => {
         setImage(reader.result as string);
       };
-      
+
       reader.readAsDataURL(file);
     }
   };
 
-  const handleScan = () => {
-    if (!image) return;
-    
-    setScanning(true);
-    
-    // Simulate OCR processing
-    setTimeout(() => {
-      setScanning(false);
-      // Navigate to form with pre-filled data in real app
-      setActiveTab("manual");
-    }, 2000);
-  };
-
   const clearImage = () => {
     setImage(null);
+    setOcrResult(null);
+    setAiResult(null);
+  };
+
+  function getBase64Content(dataUrl: string) {
+    return dataUrl.substring(dataUrl.indexOf(",") + 1);
+  }
+
+  const handleScan = async () => {
+    if (!image) return;
+    setScanning(true);
+    setOcrResult(null);
+    setAiResult(null);
+
+    try {
+      toast("Extracting text with OCR...");
+      const imageBase64 = getBase64Content(image);
+      const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
+      setOcrResult(ocrData.text);
+      toast.success("Text extracted!");
+
+      toast("Analyzing with AI...");
+      const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
+      setAiResult(aiData.result);
+      toast.success("Medication info extracted!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to extract prescription info.");
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
@@ -120,7 +153,7 @@ export default function ScanPage() {
                   >
                     <X className="h-4 w-4" />
                   </Button>
-                  <div className="mt-4 flex justify-end">
+                  <div className="mt-4 flex flex-col gap-4">
                     <Button
                       onClick={handleScan}
                       disabled={scanning}
@@ -128,6 +161,20 @@ export default function ScanPage() {
                     >
                       {scanning ? "Processing..." : "Process Image"}
                     </Button>
+                    {ocrResult && (
+                      <div className="p-2 rounded border bg-gray-50 text-xs text-gray-600">
+                        <div className="font-semibold mb-1">Extracted Text:</div>
+                        <pre className="whitespace-pre-wrap">{ocrResult}</pre>
+                      </div>
+                    )}
+                    {aiResult && (
+                      <div className="p-3 rounded border bg-blue-50 border-blue-200 mt-2">
+                        <div className="font-semibold mb-1">AI Medication Info:</div>
+                        <pre className="whitespace-pre-wrap text-xs">
+                          {JSON.stringify(aiResult, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -6,65 +6,55 @@ import { UserRound, Settings, CreditCard, Calendar, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Avatar, 
-  AvatarFallback, 
-  AvatarImage 
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage
 } from "@/components/ui/avatar";
 
 export default function ProfilePage() {
-  const { user: authUser, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !authUser) {
+    if (!loading && !user) {
       navigate("/auth");
     }
-  }, [authUser, loading, navigate]);
+  }, [user, loading, navigate]);
 
   const [activeTab, setActiveTab] = useState("account");
 
-  // Mock user data
-  const userData = {
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    avatar: "",
-    plan: "Free Plan",
-    patients: [
-      { id: 1, name: "Jane Smith (You)", relation: "self" },
-      { id: 2, name: "Robert Smith", relation: "parent" },
-    ]
-  };
+  // Use profile data from Supabase, fallback to user email if needed
+  const displayName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    "Unknown User";
+  const displayEmail =
+    user?.email || "unknown@example.com";
+  const avatarUrl = profile?.avatar_url || "";
 
-  // If we have real user data from auth, override some mock values
-  const displayName = authUser?.user_metadata?.full_name || userData.name;
-  const displayEmail = authUser?.email || userData.email;
-  
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-gray-800">Your Profile</h1>
-      
+
       {/* Profile Summary Card */}
       <Card className="mb-8">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={userData.avatar} alt={displayName} />
+              <AvatarImage src={avatarUrl} alt={displayName} />
               <AvatarFallback className="text-2xl bg-medsnap-blue text-white">
-                {displayName.split(' ').map(n => n[0]).join('')}
+                {displayName.split(' ').map((n) => n[0]).join('')}
               </AvatarFallback>
             </Avatar>
-            
             <div className="space-y-1 text-center md:text-left">
               <h2 className="text-2xl font-bold">{displayName}</h2>
               <p className="text-gray-500">{displayEmail}</p>
               <div className="inline-block bg-medsnap-grey px-3 py-1 rounded-full text-sm font-medium mt-2">
-                {userData.plan}
+                Basic Plan
               </div>
             </div>
-            
             <div className="flex-grow"></div>
-            
             <Button variant="outline" className="md:self-start">
               <Settings className="mr-2 h-4 w-4" /> Edit Profile
             </Button>
@@ -74,18 +64,15 @@ export default function ProfilePage() {
 
       {/* Profile Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-3 mb-8">
+        <TabsList className="grid grid-cols-2 mb-8">
           <TabsTrigger value="account">
             <UserRound className="mr-2 h-4 w-4" /> Account
           </TabsTrigger>
           <TabsTrigger value="subscription">
             <CreditCard className="mr-2 h-4 w-4" /> Subscription
           </TabsTrigger>
-          <TabsTrigger value="patients">
-            <Users className="mr-2 h-4 w-4" /> Patients
-          </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="account">
           <Card>
             <CardHeader>
@@ -107,7 +94,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-medium">Preferences</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -119,7 +106,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-medium">Security</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -133,7 +120,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="subscription">
           <Card>
             <CardHeader>
@@ -147,7 +134,7 @@ export default function ProfilePage() {
                   <div className="mt-4 p-4 border rounded-lg">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                       <div>
-                        <h4 className="font-semibold text-xl">{userData.plan}</h4>
+                        <h4 className="font-semibold text-xl">Basic Plan</h4>
                         <p className="text-gray-500 mt-1">
                           Basic features with limited medication scanning
                         </p>
@@ -158,7 +145,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="text-lg font-medium">Available Plans</h3>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
@@ -193,7 +180,7 @@ export default function ProfilePage() {
                         </Button>
                       </CardContent>
                     </Card>
-                    
+
                     {/* Pro Plan */}
                     <Card className="border-2 border-medsnap-blue">
                       <CardHeader className="bg-medsnap-blue/10">
@@ -228,7 +215,7 @@ export default function ProfilePage() {
                         </Button>
                       </CardContent>
                     </Card>
-                    
+
                     {/* Pro+ Plan */}
                     <Card className="border-2">
                       <CardHeader>
@@ -265,63 +252,6 @@ export default function ProfilePage() {
                       </CardContent>
                     </Card>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="patients">
-          <Card>
-            <CardHeader>
-              <CardTitle>Patient Profiles</CardTitle>
-              <CardDescription>Manage medication schedules for yourself and others</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium">Your Patients</h3>
-                  <Button size="sm">
-                    <Users className="mr-2 h-4 w-4" />
-                    Add Patient
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {userData.patients.map((patient) => (
-                    <Card key={patient.id} className="border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-4">
-                          <Avatar>
-                            <AvatarFallback className="bg-medsnap-blue text-white">
-                              {patient.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h4 className="font-semibold">
-                              {patient.name}
-                            </h4>
-                            <p className="text-sm text-gray-500 capitalize">
-                              {patient.relation}
-                            </p>
-                          </div>
-                          <div className="flex-grow"></div>
-                          <Button variant="outline" size="sm">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            View Schedule
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                
-                <div className="bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300 text-center">
-                  <p className="text-gray-500 mb-2">
-                    <span className="block font-medium text-gray-700 mb-1">Caregiver Mode</span>
-                    Upgrade to Pro+ to manage medication for up to 5 family members
-                  </p>
-                  <Button className="mt-2">Upgrade to Pro+</Button>
                 </div>
               </div>
             </CardContent>

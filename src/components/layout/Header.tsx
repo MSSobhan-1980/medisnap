@@ -56,7 +56,7 @@ export default function Header({ isLanding = false }: HeaderProps) {
               <Link to="/pricing" className="text-gray-700 hover:text-blue-500 font-medium">
                 Pricing
               </Link>
-              <Link to="/sign-in" className="text-gray-700 hover:text-blue-500 font-medium">
+              <Link to="/auth" className="text-gray-700 hover:text-blue-500 font-medium">
                 Sign In
               </Link>
               <Link to="/dashboard">
@@ -111,7 +111,7 @@ export default function Header({ isLanding = false }: HeaderProps) {
                   Pricing
                 </Link>
                 <Link 
-                  to="/sign-in" 
+                  to="/auth" 
                   className="text-gray-700 hover:text-blue-500 font-medium py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >

@@ -28,6 +28,15 @@ serve(async (req) => {
 
     const { imageBase64 } = await req.json();
     
+    // Verify API key is available
+    if (!GOOGLE_API_KEY) {
+      console.error("Google Vision API key is not configured");
+      return new Response(JSON.stringify({ error: "Google Vision API key is not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
     // Prepare payload for Google Cloud Vision OCR
     const payload = {
       requests: [
@@ -45,10 +54,35 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
+    // Improved error handling with more details
     if (!googleRes.ok) {
       const errorData = await googleRes.text();
       console.error("Google Vision API error:", googleRes.status, errorData);
-      throw new Error(`Vision API error: ${googleRes.status}`);
+      
+      // Provide more specific error messages based on status code
+      if (googleRes.status === 403) {
+        return new Response(
+          JSON.stringify({
+            error: "Authentication failed with Google Vision API. Please check your API key, billing status, and ensure the Vision API is enabled.",
+            details: errorData
+          }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            error: `Vision API error: ${googleRes.status}`,
+            details: errorData
+          }),
+          {
+            status: googleRes.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
     const googleJson = await googleRes.json();

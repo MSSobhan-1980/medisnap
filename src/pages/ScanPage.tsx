@@ -1,11 +1,13 @@
+
 import { toast } from "sonner";
 import { useState } from "react";
-import { Upload, Camera, X, PlusCircle, Images } from "lucide-react";
+import { Upload, Camera, X, PlusCircle, Images, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,13 +26,14 @@ async function callEdgeFn(path: string, body: Record<string, any>) {
     body: JSON.stringify(body),
   });
   
+  const responseData = await res.json();
+  
   if (!res.ok) {
-    const errorData = await res.text();
-    console.error("API Error:", res.status, errorData);
-    throw new Error(`API error: ${res.status} ${errorData}`);
+    console.error("API Error:", res.status, responseData);
+    throw new Error(responseData.error || `API error: ${res.status}`);
   }
   
-  return res.json();
+  return responseData;
 }
 
 export default function ScanPage() {
@@ -39,6 +42,7 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false);
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -47,6 +51,7 @@ export default function ScanPage() {
 
       reader.onload = () => {
         setImage(reader.result as string);
+        setError(null); // Clear any previous errors
       };
 
       reader.readAsDataURL(file);
@@ -57,6 +62,7 @@ export default function ScanPage() {
     setImage(null);
     setOcrResult(null);
     setAiResult(null);
+    setError(null);
   };
 
   function getBase64Content(dataUrl: string) {
@@ -68,6 +74,7 @@ export default function ScanPage() {
     setScanning(true);
     setOcrResult(null);
     setAiResult(null);
+    setError(null);
 
     try {
       toast("Extracting text with OCR...");
@@ -81,8 +88,9 @@ export default function ScanPage() {
       setAiResult(aiData.result);
       toast.success("Medication info extracted!");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to extract prescription info.");
       console.error("Error scanning:", err);
+      setError(err?.message || "Failed to extract prescription info.");
+      toast.error(err?.message || "Failed to extract prescription info.");
     } finally {
       setScanning(false);
     }
@@ -166,6 +174,18 @@ export default function ScanPage() {
                     <X className="h-4 w-4" />
                   </Button>
                   <div className="mt-4 flex flex-col gap-4">
+                    {error && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>
+                          {error.includes("Vision API error: 403") ? 
+                            "Authentication failed with Google Vision API. Please verify the API key and ensure the service is enabled." : 
+                            error
+                          }
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <Button
                       onClick={handleScan}
                       disabled={scanning}

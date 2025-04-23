@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,113 +42,53 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="lg:w-1/2">
-            <div className="grid grid-cols-3 grid-rows-3 gap-2 max-w-xl mx-auto">
-              <div className="relative bg-amber-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="From Paper to Pill Plan" 
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+            <div className="grid grid-cols-2 grid-rows-3 gap-2 max-w-xl mx-auto">
+              <div className="relative bg-amber-50 p-4 rounded-xl">
+                <div className="absolute inset-0 bg-cover bg-center rounded-xl opacity-80" 
+                     style={{ backgroundImage: "url(public/lovable-uploads/43dfcff3-1227-4b05-a677-b67ffa6e7114.png)" }}></div>
                 <div className="relative z-10 flex flex-col h-full justify-end">
                   <h3 className="text-lg font-medium text-white text-shadow">From Paper</h3>
                   <p className="text-sm text-white text-shadow">to Pill Plan</p>
                 </div>
               </div>
-              <div className="relative bg-blue-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Care Beyond the Calendar" 
-                  className="absolute inset-0 w-full h-full object-cover object-[33.33%_0]"
-                />
+              <div className="relative bg-blue-50 p-4 rounded-xl">
+                <div className="absolute inset-0 bg-cover bg-center rounded-xl opacity-80" 
+                     style={{ backgroundImage: "url(public/lovable-uploads/43dfcff3-1227-4b05-a677-b67ffa6e7114.png)" }}></div>
                 <div className="relative z-10 flex flex-col h-full justify-end">
                   <h3 className="text-lg font-medium text-white text-shadow">Care Beyond</h3>
                   <p className="text-sm text-white text-shadow">the Calendar</p>
                 </div>
               </div>
-              <div className="relative bg-green-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Today's Medication" 
-                  className="absolute inset-0 w-full h-full object-cover object-[66.66%_0]"
-                />
+              <div className="relative bg-green-50 p-4 rounded-xl">
+                <div className="absolute inset-0 bg-cover bg-center rounded-xl opacity-80" 
+                     style={{ backgroundImage: "url(public/lovable-uploads/43dfcff3-1227-4b05-a677-b67ffa6e7114.png)" }}></div>
                 <div className="relative z-10 flex flex-col h-full justify-end">
                   <h3 className="text-lg font-medium text-white text-shadow">Today's</h3>
                   <p className="text-sm text-white text-shadow">Medication, Simplified</p>
                 </div>
               </div>
-              <div className="relative bg-purple-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Right Pill, Right Time" 
-                  className="absolute inset-0 w-full h-full object-cover object-[0_33.33%]"
-                />
+              <div className="relative bg-purple-50 p-4 rounded-xl">
+                <div className="absolute inset-0 bg-cover bg-center rounded-xl opacity-80" 
+                     style={{ backgroundImage: "url(public/lovable-uploads/43dfcff3-1227-4b05-a677-b67ffa6e7114.png)" }}></div>
                 <div className="relative z-10 flex flex-col h-full justify-end">
                   <h3 className="text-lg font-medium text-white text-shadow">Right Pill,</h3>
                   <p className="text-sm text-white text-shadow">Right Time</p>
                 </div>
               </div>
-              <div className="relative bg-indigo-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Track Progress" 
-                  className="absolute inset-0 w-full h-full object-cover object-[33.33%_33.33%]"
-                />
+              <div className="relative bg-indigo-50 p-4 rounded-xl">
+                <div className="absolute inset-0 bg-cover bg-center rounded-xl opacity-80" 
+                     style={{ backgroundImage: "url(public/lovable-uploads/50fad070-574a-4633-8e1a-967d6c395495.png)" }}></div>
                 <div className="relative z-10 flex flex-col h-full justify-end">
                   <h3 className="text-lg font-medium text-white text-shadow">Track Progress</h3>
                   <p className="text-sm text-white text-shadow">with Confidence</p>
                 </div>
               </div>
-              <div className="relative bg-yellow-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Your Virtual Pill Organizer" 
-                  className="absolute inset-0 w-full h-full object-cover object-[66.66%_33.33%]"
-                />
+              <div className="relative bg-yellow-50 p-4 rounded-xl">
+                <div className="absolute inset-0 bg-cover bg-center rounded-xl opacity-80" 
+                     style={{ backgroundImage: "url(public/lovable-uploads/6452fd13-18b4-48b4-b216-291271dc3dae.png)" }}></div>
                 <div className="relative z-10 flex flex-col h-full justify-end">
                   <h3 className="text-lg font-medium text-white text-shadow">Your Virtual</h3>
                   <p className="text-sm text-white text-shadow">Pill Organizer</p>
-                </div>
-              </div>
-              <div className="relative bg-rose-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Peace of Mind" 
-                  className="absolute inset-0 w-full h-full object-cover object-[0_66.66%]"
-                />
-                <div className="relative z-10 flex flex-col h-full justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Peace of Mind</h3>
-                  <p className="text-sm text-white text-shadow">Delivered</p>
-                </div>
-              </div>
-              <div className="relative bg-sky-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Never Forget a Dose" 
-                  className="absolute inset-0 w-full h-full object-cover object-[33.33%_66.66%]"
-                />
-                <div className="relative z-10 flex flex-col h-full justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Never Forget</h3>
-                  <p className="text-sm text-white text-shadow">a Dose</p>
-                </div>
-              </div>
-              <div className="relative bg-cyan-50 p-4 rounded-xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/20"></div>
-                <img 
-                  src="public/lovable-uploads/76cf58c1-6624-4ecd-8cc9-41f29ac8e361.png" 
-                  alt="Smart Reports" 
-                  className="absolute inset-0 w-full h-full object-cover object-[66.66%_66.66%]"
-                />
-                <div className="relative z-10 flex flex-col h-full justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Smart Reports</h3>
-                  <p className="text-sm text-white text-shadow">for Smarter Care</p>
                 </div>
               </div>
             </div>

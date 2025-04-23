@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { useState } from "react";
-import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
+import { Upload, Camera, X, PlusCircle, Images, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,33 +35,6 @@ async function callEdgeFn(path: string, body: Record<string, any>) {
   return responseData;
 }
 
-// Mock OCR service that mimics the response structure of the real service
-async function mockOcrService(imageBase64: string) {
-  // Simulate a short delay for processing
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Return example text that resembles a prescription
-  return {
-    text: "PRESCRIPTION\n\nPatient: John Doe\nDate: 2023-04-23\n\nRx:\nLisinopril 10mg\nTake 1 tablet by mouth daily\n\nQuantity: 30\nRefills: 3\n\nDr. Smith\nLicense: MD12345"
-  };
-}
-
-// Mock AI analysis service
-async function mockAiService(text: string) {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  return {
-    result: {
-      medication: "Lisinopril",
-      dosage: "10mg",
-      frequency: "once daily", 
-      quantity: 30,
-      refills: 3,
-      prescriber: "Dr. Smith"
-    }
-  };
-}
-
 export default function ScanPage() {
   const [activeTab, setActiveTab] = useState("scan");
   const [image, setImage] = useState<string | null>(null);
@@ -69,7 +42,6 @@ export default function ScanPage() {
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [useMockService, setUseMockService] = useState(true);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -107,40 +79,14 @@ export default function ScanPage() {
       toast("Extracting text with OCR...");
       const imageBase64 = getBase64Content(image);
       
-      // Use mock or real service based on toggle
-      let ocrData;
-      if (useMockService) {
-        ocrData = await mockOcrService(imageBase64);
-      } else {
-        try {
-          ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
-        } catch (ocrError: any) {
-          console.error("OCR Error:", ocrError);
-          // If the real service fails, fall back to the mock service
-          toast.warning("OCR service unavailable, using simulation mode");
-          ocrData = await mockOcrService(imageBase64);
-          setUseMockService(true); // Auto-switch to mock for future scans
-        }
-      }
-      
+      // Call the real OCR edge function
+      const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
       setOcrResult(ocrData.text);
       toast.success("Text extracted!");
 
       toast("Analyzing with AI...");
-      let aiData;
-      if (useMockService) {
-        aiData = await mockAiService(ocrData.text);
-      } else {
-        try {
-          aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
-        } catch (aiError: any) {
-          console.error("AI Analysis Error:", aiError);
-          // If the real service fails, fall back to mock
-          toast.warning("AI analysis service unavailable, using simulation mode");
-          aiData = await mockAiService(ocrData.text);
-        }
-      }
-      
+      // Call the real AI analysis edge function
+      const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
       setAiResult(aiData.result);
       toast.success("Medication info extracted!");
     } catch (err: any) {
@@ -181,20 +127,6 @@ export default function ScanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-end mb-4">
-                <div 
-                  className="flex items-center cursor-pointer" 
-                  onClick={() => setUseMockService(!useMockService)}
-                >
-                  <div className={`w-10 h-6 rounded-full p-1 transition-colors ${useMockService ? 'bg-green-500' : 'bg-gray-300'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${useMockService ? 'translate-x-4' : 'translate-x-0'}`} />
-                  </div>
-                  <span className="ml-2 text-sm font-medium text-gray-600">
-                    {useMockService ? 'Simulation Mode' : 'Cloud API Mode'}
-                  </span>
-                </div>
-              </div>
-              
               <MedicationImageUpload />
               {!image ? (
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50">
@@ -249,20 +181,7 @@ export default function ScanPage() {
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Error</AlertTitle>
                         <AlertDescription>
-                          {error.includes("Vision API error: 403") ? 
-                            "Google Vision API is currently unavailable. We've enabled simulation mode for you." : 
-                            error
-                          }
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    
-                    {useMockService && !error && (
-                      <Alert className="bg-blue-50 border-blue-200">
-                        <Check className="h-4 w-4 text-blue-500" />
-                        <AlertTitle className="text-blue-700">Simulation Mode Active</AlertTitle>
-                        <AlertDescription className="text-blue-600">
-                          Using simulated OCR and AI analysis instead of cloud services
+                          {error}
                         </AlertDescription>
                       </Alert>
                     )}

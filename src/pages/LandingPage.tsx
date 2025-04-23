@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,9 +7,9 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 relative">
         <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center">
-          <div className="lg:w-1/2 mb-10 lg:mb-0 lg:pr-10">
+          <div className="lg:w-1/2 mb-10 lg:mb-0 lg:pr-10 relative z-10">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Manage Medications with <span className="text-blue-500">AI Precision</span>
             </h1>
@@ -41,133 +40,14 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
-          <div className="lg:w-1/2">
-            <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto">
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="From Paper to Pill Plan"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "0 0" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">From Paper</h3>
-                  <p className="text-sm text-white text-shadow">to Pill Plan</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Care Beyond the Calendar"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "50% 0" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Care Beyond</h3>
-                  <p className="text-sm text-white text-shadow">the Calendar</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Today's Medication"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "100% 0" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Today's</h3>
-                  <p className="text-sm text-white text-shadow">Medication, Simplified</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Right Pill, Right Time"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "0 50%" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Right Pill,</h3>
-                  <p className="text-sm text-white text-shadow">Right Time</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Track Progress"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "50% 50%" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Track Progress</h3>
-                  <p className="text-sm text-white text-shadow">with Confidence</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Virtual Pill Organizer"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "100% 50%" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Your Virtual</h3>
-                  <p className="text-sm text-white text-shadow">Pill Organizer</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Peace of Mind"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "0 100%" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Peace of Mind</h3>
-                  <p className="text-sm text-white text-shadow">Delivered</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Never Forget a Dose"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "50% 100%" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Never Forget</h3>
-                  <p className="text-sm text-white text-shadow">a Dose</p>
-                </div>
-              </div>
-
-              <div className="relative aspect-square rounded-xl overflow-hidden">
-                <img 
-                  src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                  alt="Smart Reports"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: "100% 100%" }}
-                />
-                <div className="absolute inset-0 bg-black/30"></div>
-                <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                  <h3 className="text-lg font-medium text-white text-shadow">Smart Reports</h3>
-                  <p className="text-sm text-white text-shadow">for Smarter Care</p>
-                </div>
-              </div>
+          <div className="lg:w-1/2 relative">
+            <div className="rounded-2xl overflow-hidden shadow-xl">
+              <img 
+                src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
+                alt="MedSnap AI App Interface"
+                className="w-full h-auto object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 mix-blend-overlay"></div>
             </div>
           </div>
         </div>

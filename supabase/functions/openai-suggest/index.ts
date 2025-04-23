@@ -10,13 +10,11 @@ const corsHeaders = {
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Basic authentication check
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
@@ -56,7 +54,6 @@ serve(async (req) => {
     const data = await response.json();
     const raw = data?.choices?.[0]?.message?.content || "";
 
-    // Try to parse JSON block from OpenAI output:
     let extracted;
     try {
       const match = raw.match(/\{[\s\S]*\}/);

@@ -1,5 +1,5 @@
 
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -7,8 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
-const VISION_API_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate?key=" + GOOGLE_API_KEY;
+const genAI = new GoogleGenerativeAI(Deno.env.get("GOOGLE_AI_API_KEY"));
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -29,67 +28,34 @@ serve(async (req) => {
     const { imageBase64 } = await req.json();
     
     // Verify API key is available
-    if (!GOOGLE_API_KEY) {
-      console.error("Google Vision API key is not configured");
-      return new Response(JSON.stringify({ error: "Google Vision API key is not configured" }), {
+    if (!Deno.env.get("GOOGLE_AI_API_KEY")) {
+      console.error("Google AI API key is not configured");
+      return new Response(JSON.stringify({ error: "Google AI API key is not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    
-    // Prepare payload for Google Cloud Vision OCR
-    const payload = {
-      requests: [
-        {
-          image: { content: imageBase64 },
-          features: [{ type: "TEXT_DETECTION", maxResults: 1 }]
-        }
-      ]
-    };
 
-    console.log("Sending request to Google Vision API");
-    const googleRes = await fetch(VISION_API_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    // Use Gemini Pro Vision model for text extraction
+    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+
+    // Prepare image input
+    const prompt = "Extract text from this prescription or medication label. Focus on medication name, dosage, and instructions.";
+    
+    console.log("Sending request to Google Generative AI");
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [
+        { text: prompt },
+        { inlineData: { 
+          mimeType: "image/jpeg", 
+          data: imageBase64 
+        }}
+      ]}],
     });
 
-    // Improved error handling with more details
-    if (!googleRes.ok) {
-      const errorData = await googleRes.text();
-      console.error("Google Vision API error:", googleRes.status, errorData);
-      
-      // Provide more specific error messages based on status code
-      if (googleRes.status === 403) {
-        return new Response(
-          JSON.stringify({
-            error: "Authentication failed with Google Vision API. Please check your API key, billing status, and ensure the Vision API is enabled.",
-            details: errorData
-          }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      } else {
-        return new Response(
-          JSON.stringify({ 
-            error: `Vision API error: ${googleRes.status}`,
-            details: errorData
-          }),
-          {
-            status: googleRes.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-    }
+    const extractedText = result.response.text() || "";
 
-    const googleJson = await googleRes.json();
-    const extractedText =
-      googleJson?.responses?.[0]?.fullTextAnnotation?.text || "";
-
-    console.log("OCR Text extracted successfully");
+    console.log("Text extracted successfully");
     return new Response(JSON.stringify({ text: extractedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

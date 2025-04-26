@@ -1,6 +1,7 @@
+
 import { toast } from "sonner";
 import { useState } from "react";
-import { Upload, Camera, X, PlusCircle, Images, AlertCircle } from "lucide-react";
+import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,10 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { addMedication, processAIMedicationData } from "@/services/medicationService";
+import { MedicationFormData } from "@/types/medication";
+import { useNavigate } from "react-router-dom";
 
 async function callEdgeFn(path: string, body: Record<string, any>) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -36,12 +41,24 @@ async function callEdgeFn(path: string, body: Record<string, any>) {
 }
 
 export default function ScanPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("scan");
   const [image, setImage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [addingMedication, setAddingMedication] = useState(false);
+  const [medicationAdded, setMedicationAdded] = useState(false);
+
+  const [manualForm, setManualForm] = useState<MedicationFormData>({
+    name: "",
+    dosage: "",
+    frequency: "once-daily",
+    time: "08:00",
+    startDate: new Date().toISOString().split('T')[0]
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -51,6 +68,7 @@ export default function ScanPage() {
       reader.onload = () => {
         setImage(reader.result as string);
         setError(null); // Clear any previous errors
+        setMedicationAdded(false);
       };
 
       reader.readAsDataURL(file);
@@ -62,11 +80,47 @@ export default function ScanPage() {
     setOcrResult(null);
     setAiResult(null);
     setError(null);
+    setMedicationAdded(false);
   };
 
   function getBase64Content(dataUrl: string) {
     return dataUrl.substring(dataUrl.indexOf(",") + 1);
   }
+
+  const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setManualForm(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error("You must be logged in to add medications");
+      return;
+    }
+
+    try {
+      setAddingMedication(true);
+      await addMedication(user.id, manualForm);
+      toast.success("Medication added successfully!");
+      
+      // Reset form
+      setManualForm({
+        name: "",
+        dosage: "",
+        frequency: "once-daily",
+        time: "08:00",
+        startDate: new Date().toISOString().split('T')[0]
+      });
+      
+      // Navigate to dashboard
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast.error("Failed to add medication", { description: err.message });
+    } finally {
+      setAddingMedication(false);
+    }
+  };
 
   const handleScan = async () => {
     if (!image) return;
@@ -74,6 +128,7 @@ export default function ScanPage() {
     setOcrResult(null);
     setAiResult(null);
     setError(null);
+    setMedicationAdded(false);
 
     try {
       toast("Extracting text with OCR...");
@@ -95,6 +150,22 @@ export default function ScanPage() {
       toast.error(err?.message || "Failed to extract prescription info.");
     } finally {
       setScanning(false);
+    }
+  };
+
+  const handleAddMedication = async () => {
+    if (!user || !aiResult) return;
+    
+    try {
+      setAddingMedication(true);
+      const medicationData = await processAIMedicationData(aiResult);
+      await addMedication(user.id, medicationData);
+      toast.success("Medication added to your dashboard!");
+      setMedicationAdded(true);
+    } catch (err: any) {
+      toast.error("Failed to add medication", { description: err.message });
+    } finally {
+      setAddingMedication(false);
     }
   };
 
@@ -193,12 +264,14 @@ export default function ScanPage() {
                     >
                       {scanning ? "Processing..." : "Process Image"}
                     </Button>
+                    
                     {ocrResult && (
                       <div className="p-2 rounded border bg-gray-50 text-xs text-gray-600">
                         <div className="font-semibold mb-1">Extracted Text:</div>
                         <pre className="whitespace-pre-wrap">{ocrResult}</pre>
                       </div>
                     )}
+                    
                     {aiResult && (
                       <div className="p-3 rounded border bg-blue-50 border-blue-200 mt-2">
                         <div className="font-semibold mb-1">AI Medication Info:</div>
@@ -208,12 +281,31 @@ export default function ScanPage() {
                       </div>
                     )}
                     
-                    {aiResult && (
-                      <div className="mt-4">
-                        <Button className="w-full bg-green-600 hover:bg-green-700">
-                          Add to My Medications
-                        </Button>
-                      </div>
+                    {aiResult && !medicationAdded && (
+                      <Button 
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        onClick={handleAddMedication}
+                        disabled={addingMedication}
+                      >
+                        {addingMedication ? "Adding..." : "Add to My Medications"}
+                      </Button>
+                    )}
+                    
+                    {medicationAdded && (
+                      <Alert className="bg-green-50 border-green-200 text-green-800">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <AlertTitle>Success!</AlertTitle>
+                        <AlertDescription className="flex flex-col gap-2">
+                          <span>Medication added to your dashboard</span>
+                          <Button 
+                            variant="outline" 
+                            className="mt-2 border-green-600 text-green-600"
+                            onClick={() => navigate("/dashboard")}
+                          >
+                            View in Dashboard
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
                     )}
                   </div>
                 </div>
@@ -253,12 +345,14 @@ export default function ScanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-6">
+              <form className="space-y-6" onSubmit={handleManualSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="medication-name">Medication Name *</Label>
+                    <Label htmlFor="name">Medication Name *</Label>
                     <Input 
-                      id="medication-name" 
+                      id="name" 
+                      value={manualForm.name}
+                      onChange={handleManualFormChange}
                       placeholder="e.g., Lisinopril, Metformin" 
                       required 
                     />
@@ -268,6 +362,8 @@ export default function ScanPage() {
                     <Label htmlFor="dosage">Dosage *</Label>
                     <Input 
                       id="dosage" 
+                      value={manualForm.dosage}
+                      onChange={handleManualFormChange}
                       placeholder="e.g., 10mg, 500mg, 5ml" 
                       required 
                     />
@@ -280,7 +376,8 @@ export default function ScanPage() {
                     <select 
                       id="frequency"
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      defaultValue=""
+                      value={manualForm.frequency}
+                      onChange={handleManualFormChange}
                       required
                     >
                       <option value="" disabled>Select frequency</option>
@@ -300,6 +397,8 @@ export default function ScanPage() {
                     <Input 
                       id="time" 
                       type="time"
+                      value={manualForm.time}
+                      onChange={handleManualFormChange}
                       required 
                     />
                   </div>
@@ -307,19 +406,22 @@ export default function ScanPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="start-date">Start Date</Label>
+                    <Label htmlFor="startDate">Start Date</Label>
                     <Input 
-                      id="start-date" 
+                      id="startDate" 
                       type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
+                      value={manualForm.startDate}
+                      onChange={handleManualFormChange}
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="end-date">End Date (Optional)</Label>
+                    <Label htmlFor="endDate">End Date (Optional)</Label>
                     <Input 
-                      id="end-date" 
-                      type="date" 
+                      id="endDate" 
+                      type="date"
+                      value={manualForm.endDate || ""}
+                      onChange={handleManualFormChange}
                     />
                   </div>
                 </div>
@@ -330,24 +432,18 @@ export default function ScanPage() {
                     id="instructions" 
                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="e.g., Take with food, Avoid dairy products"
+                    value={manualForm.instructions || ""}
+                    onChange={handleManualFormChange}
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="patient">Patient</Label>
-                  <select 
-                    id="patient"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    defaultValue="self"
-                  >
-                    <option value="self">Jane Smith (You)</option>
-                    <option value="parent">Robert Smith (Parent)</option>
-                  </select>
-                </div>
-                
                 <div className="flex justify-end">
-                  <Button type="submit" className="bg-medsnap-blue hover:bg-blue-600">
-                    Add Medication
+                  <Button 
+                    type="submit" 
+                    className="bg-medsnap-blue hover:bg-blue-600"
+                    disabled={addingMedication}
+                  >
+                    {addingMedication ? "Adding..." : "Add Medication"}
                   </Button>
                 </div>
               </form>

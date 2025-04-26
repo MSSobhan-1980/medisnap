@@ -11,18 +11,19 @@ import {
   AvatarFallback,
   AvatarImage
 } from "@/components/ui/avatar";
+import ProfileEditor from "@/components/ProfileEditor";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const [showEditor, setShowEditor] = useState(false);
+  const [activeTab, setActiveTab] = useState("account");
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
-
-  const [activeTab, setActiveTab] = useState("account");
 
   // Use profile data from Supabase, fallback to user email if needed
   const displayName =
@@ -32,6 +33,10 @@ export default function ProfilePage() {
   const displayEmail =
     user?.email || "unknown@example.com";
   const avatarUrl = profile?.avatar_url || "";
+
+  const handleProfileSaved = () => {
+    setShowEditor(false);
+  };
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
@@ -55,10 +60,16 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="flex-grow"></div>
-            <Button variant="outline" className="md:self-start">
-              <Settings className="mr-2 h-4 w-4" /> Edit Profile
+            <Button variant="outline" className="md:self-start" onClick={() => setShowEditor(!showEditor)}>
+              <Settings className="mr-2 h-4 w-4" /> {showEditor ? "Cancel Edit" : "Edit Profile"}
             </Button>
           </div>
+          
+          {showEditor && (
+            <div className="mt-6">
+              <ProfileEditor onSave={handleProfileSaved} />
+            </div>
+          )}
         </CardContent>
       </Card>
 

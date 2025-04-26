@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Upload } from "lucide-react";
 
 export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
   const { user, profile } = useAuth();
@@ -14,6 +16,37 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
   const [username, setUsername] = useState(profile?.username || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload file to Supabase storage
+      const { error: uploadError, data } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      setAvatarUrl(publicUrl);
+      toast.success("Profile picture uploaded successfully!");
+    } catch (error: any) {
+      toast.error("Error uploading profile picture", { description: error.message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +79,36 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
         <CardTitle>Edit Profile</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex flex-col items-center space-y-4">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={avatarUrl} alt={fullName} />
+              <AvatarFallback className="text-2xl bg-medsnap-blue text-white">
+                {fullName.split(' ').map((n) => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex items-center space-x-2">
+              <Input
+                type="file"
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                className="hidden"
+                id="avatar-upload"
+                disabled={isUploading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+                disabled={isUploading}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {isUploading ? "Uploading..." : "Upload Photo"}
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="fullName">Full Name</Label>
             <Input 
@@ -64,16 +126,6 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
               value={username} 
               onChange={(e) => setUsername(e.target.value)} 
               placeholder="Choose a username"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="avatarUrl">Profile Picture URL</Label>
-            <Input 
-              id="avatarUrl"
-              value={avatarUrl} 
-              onChange={(e) => setAvatarUrl(e.target.value)} 
-              placeholder="URL to your profile picture"
             />
           </div>
           

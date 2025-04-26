@@ -1,33 +1,40 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
-import { v4 as uuidv4 } from "uuid";
-
-// Mock storage until we implement the database
-let medicationsCache: Medication[] = [];
 
 export const getMedications = async (userId: string): Promise<Medication[]> => {
-  // In a future update, this would fetch from the database
-  return medicationsCache.filter(med => med.userId === userId);
+  const { data, error } = await supabase
+    .from('medications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('time');
+
+  if (error) throw error;
+  return data || [];
 };
 
 export const addMedication = async (userId: string, data: MedicationFormData): Promise<Medication> => {
-  const newMedication: Medication = {
-    id: uuidv4(),
-    userId,
-    status: 'pending',
-    ...data,
-  };
-  
-  medicationsCache.push(newMedication);
+  const { data: newMedication, error } = await supabase
+    .from('medications')
+    .insert([{
+      user_id: userId,
+      status: 'pending',
+      ...data,
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
   return newMedication;
 };
 
 export const updateMedicationStatus = async (medicationId: string, status: 'taken' | 'missed' | 'pending'): Promise<void> => {
-  const index = medicationsCache.findIndex(med => med.id === medicationId);
-  if (index !== -1) {
-    medicationsCache[index].status = status;
-  }
+  const { error } = await supabase
+    .from('medications')
+    .update({ status })
+    .eq('id', medicationId);
+
+  if (error) throw error;
 };
 
 export const processAIMedicationData = async (extractedData: any): Promise<MedicationFormData> => {

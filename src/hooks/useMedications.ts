@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Medication } from '@/types/medication';
 import { getMedications, updateMedicationStatus } from '@/services/medicationService';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function useMedications() {
   const { user } = useAuth();
@@ -10,6 +12,7 @@ export function useMedications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Initial fetch of medications
   useEffect(() => {
     const fetchMedications = async () => {
       if (!user) {
@@ -26,6 +29,7 @@ export function useMedications() {
       } catch (err: any) {
         console.error("Error fetching medications:", err);
         setError(err.message || "Failed to fetch medications");
+        toast.error("Failed to fetch medications", { description: err.message });
       } finally {
         setLoading(false);
       }
@@ -34,15 +38,40 @@ export function useMedications() {
     fetchMedications();
   }, [user]);
 
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('medications-changes')
+      .on('postgres_changes', 
+        {
+          event: '*',
+          schema: 'public',
+          table: 'medications',
+          filter: `user_id=eq.${user.id}`
+        }, 
+        async (payload) => {
+          // Refresh the entire list when changes occur
+          const updatedMedications = await getMedications(user.id);
+          setMedications(updatedMedications);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const markMedicationStatus = async (medicationId: string, status: 'taken' | 'missed' | 'pending') => {
     try {
       await updateMedicationStatus(medicationId, status);
-      setMedications(prev => 
-        prev.map(med => med.id === medicationId ? { ...med, status } : med)
-      );
+      toast.success(`Medication marked as ${status}`);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating medication status:", err);
+      toast.error("Failed to update medication status", { description: err.message });
       return false;
     }
   };

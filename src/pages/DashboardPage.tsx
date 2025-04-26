@@ -5,15 +5,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { useMedications } from "@/hooks/useMedications";
+import { useAuth } from "@/hooks/useAuth";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Calendar component imports
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 export default function DashboardPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState("daily");
   const [activePatient, setActivePatient] = useState("self");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { medications, loading, error, markMedicationStatus } = useMedications();
   
   // Mock data for patients
   const patients = [
@@ -21,72 +28,32 @@ export default function DashboardPage() {
     { id: "parent", name: "Robert Smith" },
   ];
 
-  // Mock medication data for the selected date
-  const medications = [
-    {
-      id: 1,
-      name: "Aspirin",
-      dosage: "100mg",
-      time: "08:00",
-      status: "taken",
-      patient: "self",
-    },
-    {
-      id: 2,
-      name: "Vitamin D",
-      dosage: "1000 IU",
-      time: "09:30",
-      status: "missed",
-      patient: "self",
-    },
-    {
-      id: 3,
-      name: "Metformin",
-      dosage: "500mg",
-      time: "13:00",
-      status: "pending",
-      patient: "self",
-    },
-    {
-      id: 4,
-      name: "Lisinopril",
-      dosage: "10mg",
-      time: "20:00",
-      status: "pending", 
-      patient: "self",
-    },
-    {
-      id: 5,
-      name: "Amlodipine",
-      dosage: "5mg",
-      time: "10:00",
-      status: "taken",
-      patient: "parent",
-    },
-    {
-      id: 6,
-      name: "Metoprolol",
-      dosage: "50mg",
-      time: "10:00",
-      status: "taken",
-      patient: "parent",
-    },
-    {
-      id: 7,
-      name: "Furosemide",
-      dosage: "20mg",
-      time: "18:00",
-      status: "pending",
-      patient: "parent",
-    },
-  ];
-
-  // Filter medications based on the active patient
-  const filteredMedications = medications.filter(med => med.patient === activePatient);
-
   // Format date for display
   const formattedDate = date ? format(date, "PPP") : "";
   
+  // Filter medications based on the selected date
+  const filteredMedications = medications.filter(med => {
+    if (!date) return false;
+    
+    const medStartDate = med.startDate ? new Date(med.startDate) : null;
+    const medEndDate = med.endDate ? new Date(med.endDate) : null;
+    
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    // Check if the selected date is within the medication date range
+    return (!medStartDate || medStartDate <= selectedDate) && 
+           (!medEndDate || medEndDate >= selectedDate);
+  });
+
+  const handleMarkAsTaken = async (medicationId: string) => {
+    await markMedicationStatus(medicationId, 'taken');
+  };
+
+  const handleMarkAsMissed = async (medicationId: string) => {
+    await markMedicationStatus(medicationId, 'missed');
+  };
+
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
@@ -107,7 +74,7 @@ export default function DashboardPage() {
               </option>
             ))}
           </select>
-          <Button>
+          <Button onClick={() => setDate(new Date())}>
             <Calendar className="mr-2 h-4 w-4" />
             Today
           </Button>
@@ -132,29 +99,35 @@ export default function DashboardPage() {
               <div className="text-lg font-semibold mb-2">
                 {date ? formattedDate : "Select a date"}
               </div>
-              <div className="text-gray-500">
-                {filteredMedications.length} medication{filteredMedications.length !== 1 ? 's' : ''}
-              </div>
-              <div className="flex items-center gap-4 mt-2">
-                <div className="flex items-center gap-1">
-                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                  <span className="text-xs text-gray-500">
-                    {filteredMedications.filter(m => m.status === "taken").length} Taken
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-3 w-3 rounded-full bg-amber-500"></div>
-                  <span className="text-xs text-gray-500">
-                    {filteredMedications.filter(m => m.status === "pending").length} Pending
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
-                  <span className="text-xs text-gray-500">
-                    {filteredMedications.filter(m => m.status === "missed").length} Missed
-                  </span>
-                </div>
-              </div>
+              {loading ? (
+                <Skeleton className="h-4 w-32" />
+              ) : (
+                <>
+                  <div className="text-gray-500">
+                    {filteredMedications.length} medication{filteredMedications.length !== 1 ? 's' : ''}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="flex items-center gap-1">
+                      <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                      <span className="text-xs text-gray-500">
+                        {filteredMedications.filter(m => m.status === "taken").length} Taken
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="h-3 w-3 rounded-full bg-amber-500"></div>
+                      <span className="text-xs text-gray-500">
+                        {filteredMedications.filter(m => m.status === "pending").length} Pending
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                      <span className="text-xs text-gray-500">
+                        {filteredMedications.filter(m => m.status === "missed").length} Missed
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -178,10 +151,20 @@ export default function DashboardPage() {
           <CardContent>
             <Tabs value={activeTab}>
               <TabsContent value="daily" className="mt-0">
-                {filteredMedications.length === 0 ? (
+                {loading ? (
+                  Array(3).fill(0).map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 py-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-4 w-[160px]" />
+                      </div>
+                    </div>
+                  ))
+                ) : filteredMedications.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-gray-500">No medications scheduled for this day</p>
-                    <Button className="mt-4">Add Medication</Button>
+                    <Button className="mt-4" onClick={() => navigate("/scan")}>Add Medication</Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -217,9 +200,23 @@ export default function DashboardPage() {
                                 <span className="text-sm font-medium">Missed</span>
                               </div>
                             ) : (
-                              <Button variant="outline" size="sm">
-                                Mark as Taken
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleMarkAsTaken(med.id)}
+                                >
+                                  Taken
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="text-red-500 border-red-200 hover:bg-red-50"
+                                  onClick={() => handleMarkAsMissed(med.id)}
+                                >
+                                  Missed
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -289,14 +286,25 @@ export default function DashboardPage() {
             <CardTitle className="text-base">Overall Adherence</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-medsnap-blue">87%</div>
-            <p className="text-sm text-gray-500">Last 30 days</p>
-            <div className="h-2 bg-gray-100 rounded-full mt-4">
-              <div 
-                className="h-2 bg-medsnap-blue rounded-full" 
-                style={{ width: '87%' }}
-              ></div>
-            </div>
+            {loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-medsnap-blue">
+                  {medications.length > 0 ? 
+                    Math.round((medications.filter(m => m.status === 'taken').length / medications.length) * 100) : 0}%
+                </div>
+                <p className="text-sm text-gray-500">Last 30 days</p>
+                <div className="h-2 bg-gray-100 rounded-full mt-4">
+                  <div 
+                    className="h-2 bg-medsnap-blue rounded-full" 
+                    style={{ width: medications.length > 0 ? 
+                      `${Math.round((medications.filter(m => m.status === 'taken').length / medications.length) * 100)}%` : '0%' 
+                    }}
+                  ></div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -305,14 +313,20 @@ export default function DashboardPage() {
             <CardTitle className="text-base">Medications Tracked</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{medications.filter(m => m.patient === activePatient).length}</div>
-            <p className="text-sm text-gray-500">
-              {activePatient === 'self' ? 'Your' : 'Their'} medications
-            </p>
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" size="sm">View All</Button>
-              <Button size="sm">Add New</Button>
-            </div>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold">{medications.length}</div>
+                <p className="text-sm text-gray-500">
+                  {activePatient === 'self' ? 'Your' : 'Their'} medications
+                </p>
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" size="sm">View All</Button>
+                  <Button size="sm" onClick={() => navigate("/scan")}>Add New</Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
         
@@ -321,7 +335,7 @@ export default function DashboardPage() {
             <CardTitle className="text-base">Upcoming Refills</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-amber-500">2</div>
+            <div className="text-3xl font-bold text-amber-500">0</div>
             <p className="text-sm text-gray-500">In the next 7 days</p>
             <div className="mt-4">
               <Button variant="outline" className="w-full">

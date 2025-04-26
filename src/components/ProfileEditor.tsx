@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,29 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Update state when profile data changes
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || "");
+      setUsername(profile.username || "");
+      setAvatarUrl(profile.avatar_url || "");
+    }
+  }, [profile]);
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
     setIsUploading(true);
     try {
+      // Create avatars bucket if it doesn't exist
+      const { data: buckets } = await supabase.storage.listBuckets();
+      if (!buckets?.find(b => b.name === 'avatars')) {
+        await supabase.storage.createBucket('avatars', {
+          public: true
+        });
+      }
+      
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/avatar.${fileExt}`;
 
@@ -65,12 +82,27 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
 
       if (error) throw error;
       toast.success("Profile updated successfully!");
+      
+      // Refresh profile data
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+        
+      if (profileError) throw profileError;
+      
       if (onSave) onSave();
     } catch (error: any) {
       toast.error("Error updating profile", { description: error.message });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return "";
+    return name.split(' ').map((n) => n[0]).join('');
   };
 
   return (
@@ -84,7 +116,7 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
             <Avatar className="h-24 w-24">
               <AvatarImage src={avatarUrl} alt={fullName} />
               <AvatarFallback className="text-2xl bg-medsnap-blue text-white">
-                {fullName.split(' ').map((n) => n[0]).join('')}
+                {getInitials(fullName)}
               </AvatarFallback>
             </Avatar>
             

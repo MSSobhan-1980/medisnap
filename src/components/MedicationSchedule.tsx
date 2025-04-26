@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Clock, CheckCircle, XCircle, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,11 @@ export default function MedicationSchedule({
       default:
         return null;
     }
+  };
+  
+  // Display a placeholder if medication name is empty
+  const getMedicationName = (medication: Medication) => {
+    return medication.name || "Unnamed Medication";
   };
 
   return (
@@ -102,9 +108,9 @@ export default function MedicationSchedule({
                       <div>
                         <div className="font-medium flex items-center gap-2">
                           <Pill className="h-4 w-4 text-medsnap-blue" />
-                          {med.name}
+                          {getMedicationName(med)}
                         </div>
-                        <div className="text-sm text-gray-500">{med.dosage} - {med.frequency}</div>
+                        <div className="text-sm text-gray-500">{med.dosage || "No dosage specified"} - {med.frequency}</div>
                         {med.instructions && (
                           <div className="text-xs text-gray-500 mt-1">{med.instructions}</div>
                         )}

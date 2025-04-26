@@ -24,6 +24,7 @@ export function useMedications() {
       setLoading(true);
       try {
         const data = await getMedications(user.id);
+        console.log("Fetched medications:", data);
         setMedications(data);
         setError(null);
       } catch (err: any) {
@@ -42,6 +43,7 @@ export function useMedications() {
   useEffect(() => {
     if (!user) return;
 
+    console.log("Setting up real-time subscription for medications");
     const channel = supabase
       .channel('medications-changes')
       .on('postgres_changes', 
@@ -52,14 +54,21 @@ export function useMedications() {
           filter: `user_id=eq.${user.id}`
         }, 
         async (payload) => {
+          console.log("Received real-time update:", payload);
           // Refresh the entire list when changes occur
-          const updatedMedications = await getMedications(user.id);
-          setMedications(updatedMedications);
+          try {
+            const updatedMedications = await getMedications(user.id);
+            console.log("Updated medications after change:", updatedMedications);
+            setMedications(updatedMedications);
+          } catch (err) {
+            console.error("Error refreshing medications after change:", err);
+          }
         }
       )
       .subscribe();
 
     return () => {
+      console.log("Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
   }, [user]);

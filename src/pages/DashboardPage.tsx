@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Calendar component imports
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
 // Custom components
@@ -19,12 +19,12 @@ export default function DashboardPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activePatient, setActivePatient] = useState("self");
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { medications, loading, error, markMedicationStatus } = useMedications();
   
   // Mock data for patients
   const patients = [
-    { id: "self", name: "Jane Smith (You)" },
+    { id: "self", name: profile?.full_name ? `${profile.full_name} (You)` : "You" },
     { id: "parent", name: "Robert Smith" },
   ];
 
@@ -39,12 +39,18 @@ export default function DashboardPage() {
     const medEndDate = med.endDate ? new Date(med.endDate) : null;
     
     const selectedDate = new Date(date);
+    // Reset time part for accurate date comparison
     selectedDate.setHours(0, 0, 0, 0);
     
     // Check if the selected date is within the medication date range
     return (!medStartDate || medStartDate <= selectedDate) && 
            (!medEndDate || medEndDate >= selectedDate);
   });
+
+  console.log("Current medications:", medications);
+  console.log("Filtered medications:", filteredMedications);
+  console.log("Current date:", date);
+  console.log("Current profile:", profile);
 
   const handleMarkAsTaken = async (medicationId: string) => {
     await markMedicationStatus(medicationId, 'taken');

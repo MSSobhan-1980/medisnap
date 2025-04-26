@@ -36,8 +36,8 @@ serve(async (req) => {
       });
     }
 
-    // Use Gemini Pro Vision model for text extraction
-    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+    // Use Gemini 1.5 Flash model for text extraction
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // Prepare image input
     const prompt = "Extract text from this prescription or medication label. Focus on medication name, dosage, and instructions.";

@@ -18,9 +18,11 @@ export type Database = {
           id: string
           instructions: string | null
           name: string
+          notes: string | null
           start_date: string
           status: string | null
           time: string
+          timing: string | null
           updated_at: string
           user_id: string
         }
@@ -32,9 +34,11 @@ export type Database = {
           id?: string
           instructions?: string | null
           name: string
+          notes?: string | null
           start_date?: string
           status?: string | null
           time: string
+          timing?: string | null
           updated_at?: string
           user_id: string
         }
@@ -46,9 +50,11 @@ export type Database = {
           id?: string
           instructions?: string | null
           name?: string
+          notes?: string | null
           start_date?: string
           status?: string | null
           time?: string
+          timing?: string | null
           updated_at?: string
           user_id?: string
         }

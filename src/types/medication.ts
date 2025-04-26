@@ -10,6 +10,8 @@ export interface Medication {
   startDate?: string;
   endDate?: string;
   userId: string;
+  timing?: 'before_food' | 'with_food' | 'after_food';
+  notes?: string;
 }
 
 export interface MedicationFormData {
@@ -20,4 +22,6 @@ export interface MedicationFormData {
   instructions?: string;
   startDate: string;
   endDate?: string;
+  timing?: 'before_food' | 'with_food' | 'after_food';
+  notes?: string;
 }

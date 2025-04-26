@@ -22,7 +22,9 @@ export const getMedications = async (userId: string): Promise<Medication[]> => {
     instructions: item.instructions || undefined,
     startDate: item.start_date,
     endDate: item.end_date || undefined,
-    userId: item.user_id
+    userId: item.user_id,
+    timing: item.timing as 'before_food' | 'with_food' | 'after_food' || undefined,
+    notes: item.notes || undefined
   }));
 };
 
@@ -38,7 +40,9 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
       time: data.time,
       instructions: data.instructions,
       start_date: data.startDate,
-      end_date: data.endDate
+      end_date: data.endDate,
+      timing: data.timing,
+      notes: data.notes
     }])
     .select()
     .single();
@@ -56,7 +60,9 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
     instructions: newMedication.instructions || undefined,
     startDate: newMedication.start_date,
     endDate: newMedication.end_date || undefined,
-    userId: newMedication.user_id
+    userId: newMedication.user_id,
+    timing: newMedication.timing as 'before_food' | 'with_food' | 'after_food' || undefined,
+    notes: newMedication.notes || undefined
   };
 };
 
@@ -71,13 +77,27 @@ export const updateMedicationStatus = async (medicationId: string, status: 'take
 
 export const processAIMedicationData = async (extractedData: any): Promise<MedicationFormData> => {
   // Process AI-extracted data into the format we need
+  let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
+  
+  // Try to determine timing from instructions
+  const instructions = extractedData.instructions || "";
+  if (instructions.toLowerCase().includes("before meal") || instructions.toLowerCase().includes("before food")) {
+    timing = 'before_food';
+  } else if (instructions.toLowerCase().includes("with meal") || instructions.toLowerCase().includes("with food")) {
+    timing = 'with_food';
+  } else if (instructions.toLowerCase().includes("after meal") || instructions.toLowerCase().includes("after food")) {
+    timing = 'after_food';
+  }
+
   return {
     name: extractedData.medication_name || "",
     dosage: extractedData.dosage || "",
     frequency: extractedData.frequency || "once-daily",
-    time: "08:00", // Default time
+    time: extractedData.time || "08:00", // Default time
     instructions: extractedData.instructions || "",
     startDate: new Date().toISOString().split('T')[0],
-    endDate: extractedData.end_date || undefined
+    endDate: extractedData.end_date || undefined,
+    timing: timing,
+    notes: extractedData.notes || undefined
   };
 };

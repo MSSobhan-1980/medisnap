@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
@@ -9,6 +10,8 @@ export const getMedications = async (userId: string): Promise<Medication[]> => {
     .order('time');
 
   if (error) throw error;
+  
+  console.log("Raw medication data from database:", data);
   
   // Transform the data to match our interface
   return (data || []).map(item => ({
@@ -28,6 +31,8 @@ export const getMedications = async (userId: string): Promise<Medication[]> => {
 };
 
 export const addMedication = async (userId: string, data: MedicationFormData): Promise<Medication> => {
+  console.log("Adding medication with data:", data);
+  
   const { data: newMedication, error } = await supabase
     .from('medications')
     .insert([{
@@ -46,7 +51,12 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("Error adding medication:", error);
+    throw error;
+  }
+  
+  console.log("Successfully added medication:", newMedication);
   
   // Transform to match our interface
   return {
@@ -66,15 +76,24 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
 };
 
 export const updateMedicationStatus = async (medicationId: string, status: 'taken' | 'missed' | 'pending'): Promise<void> => {
+  console.log(`Updating medication ${medicationId} status to ${status}`);
+  
   const { error } = await supabase
     .from('medications')
     .update({ status })
     .eq('id', medicationId);
 
-  if (error) throw error;
+  if (error) {
+    console.error("Error updating medication status:", error);
+    throw error;
+  }
+  
+  console.log("Successfully updated medication status");
 };
 
 export const processAIMedicationData = async (extractedData: any): Promise<MedicationFormData> => {
+  console.log("Processing AI extracted data:", extractedData);
+  
   // Process AI-extracted data into the format we need
   let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
   
@@ -87,16 +106,45 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
   } else if (instructions.toLowerCase().includes("after meal") || instructions.toLowerCase().includes("after food")) {
     timing = 'after_food';
   }
+  
+  // Extract medication data from the medications array if it exists
+  let medicationData = {
+    name: "",
+    dosage: "",
+    frequency: "once-daily",
+    instructions: "",
+  };
+  
+  if (extractedData.medications && Array.isArray(extractedData.medications) && extractedData.medications.length > 0) {
+    const firstMed = extractedData.medications[0];
+    medicationData = {
+      name: firstMed.medication_name || "",
+      dosage: firstMed.dosage || "",
+      frequency: firstMed.frequency || "once-daily",
+      instructions: firstMed.instructions || "",
+    };
+  } else {
+    // Fallback to top-level properties
+    medicationData = {
+      name: extractedData.medication_name || "",
+      dosage: extractedData.dosage || "",
+      frequency: extractedData.frequency || "once-daily",
+      instructions: extractedData.instructions || "",
+    };
+  }
 
-  return {
-    name: extractedData.medication_name || "",
-    dosage: extractedData.dosage || "",
-    frequency: extractedData.frequency || "once-daily",
+  const result = {
+    name: medicationData.name,
+    dosage: medicationData.dosage,
+    frequency: medicationData.frequency,
     time: extractedData.time || "08:00", // Default time
-    instructions: extractedData.instructions || "",
+    instructions: medicationData.instructions,
     startDate: new Date().toISOString().split('T')[0],
     endDate: extractedData.end_date || undefined,
     timing: timing,
     notes: extractedData.notes || undefined
   };
+  
+  console.log("Processed medication data:", result);
+  return result;
 };

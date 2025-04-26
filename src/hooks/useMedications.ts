@@ -43,7 +43,7 @@ export function useMedications() {
   useEffect(() => {
     if (!user) return;
 
-    console.log("Setting up real-time subscription for medications");
+    console.log("Setting up real-time subscription for medications for user:", user.id);
     const channel = supabase
       .channel('medications-changes')
       .on('postgres_changes', 
@@ -77,6 +77,14 @@ export function useMedications() {
     try {
       await updateMedicationStatus(medicationId, status);
       toast.success(`Medication marked as ${status}`);
+      
+      // Update the local state immediately for better UX
+      setMedications(prev => 
+        prev.map(med => 
+          med.id === medicationId ? { ...med, status } : med
+        )
+      );
+      
       return true;
     } catch (err: any) {
       console.error("Error updating medication status:", err);

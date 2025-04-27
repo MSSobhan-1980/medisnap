@@ -12,7 +12,7 @@ import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { addMedication, processAIMedicationData } from "@/services/medicationService";
+import { addMedication, addMultipleMedications, processAIMedicationData } from "@/services/medicationService";
 import { MedicationFormData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 
@@ -159,9 +159,15 @@ export default function ScanPage() {
     try {
       setAddingMedication(true);
       const medicationData = await processAIMedicationData(aiResult);
-      await addMedication(user.id, medicationData);
-      toast.success("Medication added to your dashboard!");
-      setMedicationAdded(true);
+      
+      // Use addMultipleMedications instead of addMedication to handle array
+      if (medicationData.length > 0) {
+        await addMultipleMedications(user.id, medicationData);
+        toast.success("Medications added to your dashboard!");
+        setMedicationAdded(true);
+      } else {
+        toast.error("No valid medication data extracted");
+      }
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
     } finally {
@@ -468,3 +474,4 @@ export default function ScanPage() {
     </div>
   );
 }
+

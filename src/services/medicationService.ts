@@ -72,6 +72,51 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
   };
 };
 
+export const addMultipleMedications = async (userId: string, data: MedicationFormData[]): Promise<Medication[]> => {
+  console.log("Adding multiple medications with data:", data);
+  
+  const medicationsToInsert = data.map(med => ({
+    user_id: userId,
+    status: 'pending',
+    name: med.name,
+    dosage: med.dosage,
+    frequency: med.frequency,
+    time: med.time,
+    instructions: med.instructions,
+    start_date: med.startDate,
+    end_date: med.endDate,
+    timing: med.timing,
+    notes: med.notes
+  }));
+  
+  const { data: newMedications, error } = await supabase
+    .from('medications')
+    .insert(medicationsToInsert)
+    .select();
+
+  if (error) {
+    console.error("Error adding medications:", error);
+    throw error;
+  }
+  
+  console.log("Successfully added medications:", newMedications);
+  
+  return (newMedications || []).map(med => ({
+    id: med.id,
+    name: med.name,
+    dosage: med.dosage,
+    frequency: med.frequency,
+    time: med.time,
+    status: med.status as 'taken' | 'missed' | 'pending',
+    instructions: med.instructions || undefined,
+    startDate: med.start_date,
+    endDate: med.end_date || undefined,
+    userId: med.user_id,
+    timing: med.timing as 'before_food' | 'with_food' | 'after_food' || undefined,
+    notes: med.notes || undefined
+  }));
+};
+
 export const updateMedicationStatus = async (medicationId: string, status: 'taken' | 'missed' | 'pending'): Promise<void> => {
   console.log(`Updating medication ${medicationId} status to ${status}`);
   
@@ -92,12 +137,10 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
   console.log("Processing AI extracted data:", extractedData);
   
   try {
-    // First try to parse the raw content if it exists
     let parsedData = extractedData;
     
     if (extractedData.raw) {
       try {
-        // Extract JSON from the raw string if it's wrapped in code blocks
         const jsonMatch = extractedData.raw.match(/```json\n([\s\S]*?)\n```/);
         if (jsonMatch && jsonMatch[1]) {
           const jsonData = JSON.parse(jsonMatch[1]);
@@ -110,17 +153,13 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
       }
     }
 
-    // Ensure we're working with an array
     const medicationsArray = Array.isArray(parsedData) ? parsedData : [parsedData];
     
     console.log("Processing medications array:", medicationsArray);
 
-    // Process each medication in the array
     return medicationsArray.map(med => {
-      // Process medication timing
       let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
       
-      // Check instructions for timing information
       const instructions = (med.instructions || "").toLowerCase();
       if (instructions.includes("before meal") || instructions.includes("before food")) {
         timing = 'before_food';
@@ -130,7 +169,6 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
         timing = 'after_food';
       }
       
-      // Extract frequency from the data
       let frequency = "once-daily";
       const freqText = (med.frequency || "").toLowerCase();
       if (freqText.includes("twice") || freqText.includes("2 times") || freqText.includes("two times")) {
@@ -143,8 +181,7 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
         frequency = "as-needed";
       }
       
-      // Determine time based on frequency and instructions
-      let time = "08:00"; // Default morning time
+      let time = "08:00";
       if (instructions.includes("evening") || instructions.includes("night")) {
         time = "20:00";
       } else if (instructions.includes("afternoon")) {

@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "sonner";
 
 interface MedicationScheduleProps {
   medications: Medication[];
@@ -24,6 +25,7 @@ interface MedicationScheduleProps {
   date: Date | undefined;
   onMarkAsTaken: (medicationId: string) => Promise<void>;
   onMarkAsMissed: (medicationId: string) => Promise<void>;
+  onDelete?: (medicationId: string) => Promise<void>;
 }
 
 export default function MedicationSchedule({ 
@@ -31,7 +33,8 @@ export default function MedicationSchedule({
   loading, 
   date,
   onMarkAsTaken,
-  onMarkAsMissed
+  onMarkAsMissed,
+  onDelete
 }: MedicationScheduleProps) {
   const [activeTab, setActiveTab] = useState("daily");
   const navigate = useNavigate();
@@ -76,8 +79,6 @@ export default function MedicationSchedule({
   // Display a placeholder if medication name is empty
   const getMedicationName = (medication: Medication) => {
     if (!medication.name) return "Unnamed Medication";
-    
-    // Return name with generic name if available (in this example, we'll assume it's in parentheses in the name)
     return medication.name;
   };
   
@@ -117,6 +118,17 @@ export default function MedicationSchedule({
           </Button>
         </div>
       );
+    }
+  };
+
+  const handleDelete = async (medicationId: string) => {
+    if (!onDelete) return;
+    
+    try {
+      await onDelete(medicationId);
+      toast.success("Medication deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete medication");
     }
   };
 
@@ -167,6 +179,7 @@ export default function MedicationSchedule({
                       <TableHead className="w-[120px]">Evening</TableHead>
                       <TableHead className="w-[180px]">Instructions</TableHead>
                       <TableHead className="w-[120px] text-right">Status</TableHead>
+                      <TableHead className="w-[60px] text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -206,6 +219,16 @@ export default function MedicationSchedule({
                           </TableCell>
                           <TableCell className="text-right">
                             {getStatusComponent(med)}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => handleDelete(med.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

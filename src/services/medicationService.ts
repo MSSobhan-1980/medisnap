@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
@@ -13,7 +12,6 @@ export const getMedications = async (userId: string): Promise<Medication[]> => {
   
   console.log("Raw medication data from database:", data);
   
-  // Transform the data to match our interface
   return (data || []).map(item => ({
     id: item.id,
     name: item.name,
@@ -58,7 +56,6 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
   
   console.log("Successfully added medication:", newMedication);
   
-  // Transform to match our interface
   return {
     id: newMedication.id,
     name: newMedication.name,
@@ -91,7 +88,7 @@ export const updateMedicationStatus = async (medicationId: string, status: 'take
   console.log("Successfully updated medication status");
 };
 
-export const processAIMedicationData = async (extractedData: any): Promise<MedicationFormData> => {
+export const processAIMedicationData = async (extractedData: any): Promise<MedicationFormData[]> => {
   console.log("Processing AI extracted data:", extractedData);
   
   try {
@@ -105,79 +102,85 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
         if (jsonMatch && jsonMatch[1]) {
           const jsonData = JSON.parse(jsonMatch[1]);
           console.log("Parsed JSON from raw:", jsonData);
-          
-          // If it's an array, use the first medication
-          if (Array.isArray(jsonData) && jsonData.length > 0) {
-            parsedData = jsonData[0];
-          } else {
-            parsedData = jsonData;
-          }
+          parsedData = Array.isArray(jsonData) ? jsonData : [jsonData];
         }
       } catch (e) {
         console.error("Error parsing raw JSON:", e);
-        // Continue with original data
+        return [];
       }
     }
+
+    // Ensure we're working with an array
+    const medicationsArray = Array.isArray(parsedData) ? parsedData : [parsedData];
     
-    // Process medication timing
-    let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
-    
-    // Check instructions for timing information
-    const instructions = (parsedData.instructions || "").toLowerCase();
-    if (instructions.includes("before meal") || instructions.includes("before food")) {
-      timing = 'before_food';
-    } else if (instructions.includes("with meal") || instructions.includes("with food")) {
-      timing = 'with_food';
-    } else if (instructions.includes("after meal") || instructions.includes("after food")) {
-      timing = 'after_food';
-    }
-    
-    // Extract frequency from the data
-    let frequency = "once-daily";
-    const freqText = (parsedData.frequency || "").toLowerCase();
-    if (freqText.includes("twice") || freqText.includes("2 times") || freqText.includes("two times")) {
-      frequency = "twice-daily";
-    } else if (freqText.includes("three") || freqText.includes("3 times")) {
-      frequency = "three-times-daily";
-    } else if (freqText.includes("four") || freqText.includes("4 times")) {
-      frequency = "four-times-daily";
-    } else if (freqText.includes("as needed") || freqText.includes("when needed")) {
-      frequency = "as-needed";
-    }
-    
-    // Determine time based on frequency and instructions
-    let time = "08:00"; // Default morning time
-    if (instructions.includes("evening") || instructions.includes("night")) {
-      time = "20:00";
-    } else if (instructions.includes("afternoon")) {
-      time = "14:00";
-    }
-    
-    // Create the final medication data object
-    const result: MedicationFormData = {
-      name: parsedData.medication_name || "",
-      dosage: parsedData.dosage || "",
-      frequency: frequency,
-      time: parsedData.time || time,
-      instructions: parsedData.instructions || "",
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: parsedData.end_date || undefined,
-      timing: timing,
-      notes: parsedData.notes || undefined
-    };
-    
-    console.log("Processed medication data:", result);
-    return result;
+    console.log("Processing medications array:", medicationsArray);
+
+    // Process each medication in the array
+    return medicationsArray.map(med => {
+      // Process medication timing
+      let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
+      
+      // Check instructions for timing information
+      const instructions = (med.instructions || "").toLowerCase();
+      if (instructions.includes("before meal") || instructions.includes("before food")) {
+        timing = 'before_food';
+      } else if (instructions.includes("with meal") || instructions.includes("with food")) {
+        timing = 'with_food';
+      } else if (instructions.includes("after meal") || instructions.includes("after food")) {
+        timing = 'after_food';
+      }
+      
+      // Extract frequency from the data
+      let frequency = "once-daily";
+      const freqText = (med.frequency || "").toLowerCase();
+      if (freqText.includes("twice") || freqText.includes("2 times") || freqText.includes("two times")) {
+        frequency = "twice-daily";
+      } else if (freqText.includes("three") || freqText.includes("3 times")) {
+        frequency = "three-times-daily";
+      } else if (freqText.includes("four") || freqText.includes("4 times")) {
+        frequency = "four-times-daily";
+      } else if (freqText.includes("as needed") || freqText.includes("when needed")) {
+        frequency = "as-needed";
+      }
+      
+      // Determine time based on frequency and instructions
+      let time = "08:00"; // Default morning time
+      if (instructions.includes("evening") || instructions.includes("night")) {
+        time = "20:00";
+      } else if (instructions.includes("afternoon")) {
+        time = "14:00";
+      }
+      
+      return {
+        name: med.medication_name || "",
+        dosage: med.dosage || "",
+        frequency: frequency,
+        time: med.time || time,
+        instructions: med.instructions || "",
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: med.end_date || undefined,
+        timing: timing,
+        notes: med.notes || undefined
+      };
+    });
   } catch (error) {
     console.error("Error processing AI data:", error);
-    // Return a basic structure if processing fails
-    return {
-      name: "",
-      dosage: "",
-      frequency: "once-daily",
-      time: "08:00",
-      startDate: new Date().toISOString().split('T')[0],
-      instructions: ""
-    };
+    return [];
   }
+};
+
+export const deleteMedication = async (medicationId: string): Promise<void> => {
+  console.log("Deleting medication:", medicationId);
+  
+  const { error } = await supabase
+    .from('medications')
+    .delete()
+    .eq('id', medicationId);
+
+  if (error) {
+    console.error("Error deleting medication:", error);
+    throw error;
+  }
+  
+  console.log("Successfully deleted medication");
 };

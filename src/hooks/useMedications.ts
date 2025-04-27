@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Medication } from '@/types/medication';
-import { getMedications, updateMedicationStatus } from '@/services/medicationService';
+import { getMedications, updateMedicationStatus, deleteMedication as deleteUserMedication } from '@/services/medicationService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -12,7 +11,6 @@ export function useMedications() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initial fetch of medications
   useEffect(() => {
     const fetchMedications = async () => {
       if (!user) {
@@ -39,7 +37,6 @@ export function useMedications() {
     fetchMedications();
   }, [user]);
 
-  // Set up real-time subscription
   useEffect(() => {
     if (!user) return;
 
@@ -55,7 +52,6 @@ export function useMedications() {
         }, 
         async (payload) => {
           console.log("Received real-time update:", payload);
-          // Refresh the entire list when changes occur
           try {
             const updatedMedications = await getMedications(user.id);
             console.log("Updated medications after change:", updatedMedications);
@@ -78,7 +74,6 @@ export function useMedications() {
       await updateMedicationStatus(medicationId, status);
       toast.success(`Medication marked as ${status}`);
       
-      // Update the local state immediately for better UX
       setMedications(prev => 
         prev.map(med => 
           med.id === medicationId ? { ...med, status } : med
@@ -93,10 +88,25 @@ export function useMedications() {
     }
   };
 
+  const deleteMedication = async (medicationId: string) => {
+    try {
+      await deleteUserMedication(medicationId);
+      
+      setMedications(prev => prev.filter(med => med.id !== medicationId));
+      
+      return true;
+    } catch (err: any) {
+      console.error("Error deleting medication:", err);
+      toast.error("Failed to delete medication", { description: err.message });
+      return false;
+    }
+  };
+
   return {
     medications,
     loading,
     error,
-    markMedicationStatus
+    markMedicationStatus,
+    deleteMedication
   };
 }

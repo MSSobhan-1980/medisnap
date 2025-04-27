@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Calendar as CalendarIcon, User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +6,10 @@ import { useMedications } from "@/hooks/useMedications";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Calendar component imports
 import { Calendar } from "@/components/ui/calendar";
 import { format, isWithinInterval, startOfDay } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
-// Custom components
 import MedicationSchedule from "@/components/MedicationSchedule";
 
 export default function DashboardPage() {
@@ -20,36 +17,29 @@ export default function DashboardPage() {
   const [activePatient, setActivePatient] = useState("self");
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { medications, loading, error, markMedicationStatus } = useMedications();
-  
-  // Mock data for patients
+  const { medications, loading, error, markMedicationStatus, deleteMedication } = useMedications();
+
   const patients = [
     { id: "self", name: profile?.full_name ? `${profile.full_name} (You)` : "You" },
     { id: "parent", name: "Robert Smith" },
   ];
 
-  // Format date for display
   const formattedDate = date ? format(date, "PPP") : "";
   
-  // Filter medications based on the selected date
   const filteredMedications = medications.filter(med => {
     if (!date) return false;
     
     const selectedDate = startOfDay(date);
     
-    // Start date is required, end date is optional
     const startDate = med.startDate ? startOfDay(new Date(med.startDate)) : null;
     const endDate = med.endDate ? startOfDay(new Date(med.endDate)) : null;
     
-    // If no start date, don't display the medication
     if (!startDate) return false;
     
-    // If there's an end date, check if the selected date is within the range
     if (endDate) {
       return isWithinInterval(selectedDate, { start: startDate, end: endDate });
     }
     
-    // If there's no end date, check if the selected date is on or after the start date
     return selectedDate >= startDate;
   });
 
@@ -64,6 +54,10 @@ export default function DashboardPage() {
 
   const handleMarkAsMissed = async (medicationId: string) => {
     await markMedicationStatus(medicationId, 'missed');
+  };
+
+  const handleDelete = async (medicationId: string) => {
+    await deleteMedication(medicationId);
   };
 
   return (
@@ -93,7 +87,6 @@ export default function DashboardPage() {
         </div>
       </div>
       
-      {/* Calendar section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <Card className="lg:col-span-1">
           <CardHeader>
@@ -150,10 +143,10 @@ export default function DashboardPage() {
           date={date}
           onMarkAsTaken={handleMarkAsTaken}
           onMarkAsMissed={handleMarkAsMissed}
+          onDelete={handleDelete}
         />
       </div>
       
-      {/* Medication Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-2">

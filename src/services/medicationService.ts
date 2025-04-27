@@ -94,57 +94,90 @@ export const updateMedicationStatus = async (medicationId: string, status: 'take
 export const processAIMedicationData = async (extractedData: any): Promise<MedicationFormData> => {
   console.log("Processing AI extracted data:", extractedData);
   
-  // Process AI-extracted data into the format we need
-  let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
-  
-  // Try to determine timing from instructions
-  const instructions = extractedData.instructions || "";
-  if (instructions.toLowerCase().includes("before meal") || instructions.toLowerCase().includes("before food")) {
-    timing = 'before_food';
-  } else if (instructions.toLowerCase().includes("with meal") || instructions.toLowerCase().includes("with food")) {
-    timing = 'with_food';
-  } else if (instructions.toLowerCase().includes("after meal") || instructions.toLowerCase().includes("after food")) {
-    timing = 'after_food';
-  }
-  
-  // Extract medication data from the medications array if it exists
-  let medicationData = {
-    name: "",
-    dosage: "",
-    frequency: "once-daily",
-    instructions: "",
-  };
-  
-  if (extractedData.medications && Array.isArray(extractedData.medications) && extractedData.medications.length > 0) {
-    const firstMed = extractedData.medications[0];
-    medicationData = {
-      name: firstMed.medication_name || "",
-      dosage: firstMed.dosage || "",
-      frequency: firstMed.frequency || "once-daily",
-      instructions: firstMed.instructions || "",
+  try {
+    // First try to parse the raw content if it exists
+    let parsedData = extractedData;
+    
+    if (extractedData.raw) {
+      try {
+        // Extract JSON from the raw string if it's wrapped in code blocks
+        const jsonMatch = extractedData.raw.match(/```json\n([\s\S]*?)\n```/);
+        if (jsonMatch && jsonMatch[1]) {
+          const jsonData = JSON.parse(jsonMatch[1]);
+          console.log("Parsed JSON from raw:", jsonData);
+          
+          // If it's an array, use the first medication
+          if (Array.isArray(jsonData) && jsonData.length > 0) {
+            parsedData = jsonData[0];
+          } else {
+            parsedData = jsonData;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing raw JSON:", e);
+        // Continue with original data
+      }
+    }
+    
+    // Process medication timing
+    let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
+    
+    // Check instructions for timing information
+    const instructions = (parsedData.instructions || "").toLowerCase();
+    if (instructions.includes("before meal") || instructions.includes("before food")) {
+      timing = 'before_food';
+    } else if (instructions.includes("with meal") || instructions.includes("with food")) {
+      timing = 'with_food';
+    } else if (instructions.includes("after meal") || instructions.includes("after food")) {
+      timing = 'after_food';
+    }
+    
+    // Extract frequency from the data
+    let frequency = "once-daily";
+    const freqText = (parsedData.frequency || "").toLowerCase();
+    if (freqText.includes("twice") || freqText.includes("2 times") || freqText.includes("two times")) {
+      frequency = "twice-daily";
+    } else if (freqText.includes("three") || freqText.includes("3 times")) {
+      frequency = "three-times-daily";
+    } else if (freqText.includes("four") || freqText.includes("4 times")) {
+      frequency = "four-times-daily";
+    } else if (freqText.includes("as needed") || freqText.includes("when needed")) {
+      frequency = "as-needed";
+    }
+    
+    // Determine time based on frequency and instructions
+    let time = "08:00"; // Default morning time
+    if (instructions.includes("evening") || instructions.includes("night")) {
+      time = "20:00";
+    } else if (instructions.includes("afternoon")) {
+      time = "14:00";
+    }
+    
+    // Create the final medication data object
+    const result: MedicationFormData = {
+      name: parsedData.medication_name || "",
+      dosage: parsedData.dosage || "",
+      frequency: frequency,
+      time: parsedData.time || time,
+      instructions: parsedData.instructions || "",
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: parsedData.end_date || undefined,
+      timing: timing,
+      notes: parsedData.notes || undefined
     };
-  } else {
-    // Fallback to top-level properties
-    medicationData = {
-      name: extractedData.medication_name || "",
-      dosage: extractedData.dosage || "",
-      frequency: extractedData.frequency || "once-daily",
-      instructions: extractedData.instructions || "",
+    
+    console.log("Processed medication data:", result);
+    return result;
+  } catch (error) {
+    console.error("Error processing AI data:", error);
+    // Return a basic structure if processing fails
+    return {
+      name: "",
+      dosage: "",
+      frequency: "once-daily",
+      time: "08:00",
+      startDate: new Date().toISOString().split('T')[0],
+      instructions: ""
     };
   }
-
-  const result = {
-    name: medicationData.name,
-    dosage: medicationData.dosage,
-    frequency: medicationData.frequency,
-    time: extractedData.time || "08:00", // Default time
-    instructions: medicationData.instructions,
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: extractedData.end_date || undefined,
-    timing: timing,
-    notes: extractedData.notes || undefined
-  };
-  
-  console.log("Processed medication data:", result);
-  return result;
 };

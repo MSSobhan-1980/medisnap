@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Calendar component imports
 import { Calendar } from "@/components/ui/calendar";
-import { format, isSameDay } from "date-fns";
+import { format, isWithinInterval, startOfDay } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
 // Custom components
@@ -35,16 +35,22 @@ export default function DashboardPage() {
   const filteredMedications = medications.filter(med => {
     if (!date) return false;
     
-    const medStartDate = med.startDate ? new Date(med.startDate) : null;
-    const medEndDate = med.endDate ? new Date(med.endDate) : null;
+    const selectedDate = startOfDay(date);
     
-    const selectedDate = new Date(date);
-    // Reset time part for accurate date comparison
-    selectedDate.setHours(0, 0, 0, 0);
+    // Start date is required, end date is optional
+    const startDate = med.startDate ? startOfDay(new Date(med.startDate)) : null;
+    const endDate = med.endDate ? startOfDay(new Date(med.endDate)) : null;
     
-    // Check if the selected date is within the medication date range
-    return (!medStartDate || medStartDate <= selectedDate) && 
-           (!medEndDate || medEndDate >= selectedDate);
+    // If no start date, don't display the medication
+    if (!startDate) return false;
+    
+    // If there's an end date, check if the selected date is within the range
+    if (endDate) {
+      return isWithinInterval(selectedDate, { start: startDate, end: endDate });
+    }
+    
+    // If there's no end date, check if the selected date is on or after the start date
+    return selectedDate >= startDate;
   });
 
   console.log("Current medications:", medications);

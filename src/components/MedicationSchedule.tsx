@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Clock, CheckCircle, XCircle, Pill } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,14 @@ import { Medication } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface MedicationScheduleProps {
   medications: Medication[];
@@ -31,25 +39,85 @@ export default function MedicationSchedule({
   // Format date for display
   const formattedDate = date ? format(date, "PPP") : "";
   
-  // Get timing label
-  const getTimingLabel = (timing?: 'before_food' | 'with_food' | 'after_food') => {
-    if (!timing) return null;
+  // Get timing display
+  const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
+    // This is a simplified check - in a real app you'd have more detailed timing data
+    const hour = parseInt(medication.time.split(':')[0], 10);
     
-    switch (timing) {
-      case 'before_food':
-        return <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">Before food</Badge>;
-      case 'with_food':
-        return <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">With food</Badge>;
-      case 'after_food':
-        return <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">After food</Badge>;
-      default:
-        return null;
-    }
+    // Define time ranges for each period
+    const isMorning = hour >= 5 && hour < 12;
+    const isAfternoon = hour >= 12 && hour < 17;
+    const isEvening = hour >= 17 || hour < 5;
+    
+    // Check if medication should be taken during this period
+    const isInPeriod = 
+      (period === 'morning' && isMorning) ||
+      (period === 'afternoon' && isAfternoon) ||
+      (period === 'evening' && isEvening);
+    
+    if (!isInPeriod) return "-";
+    
+    // Show time with timing if available
+    const timingText = medication.timing ? 
+      medication.timing.replace('_', ' ') : '';
+    
+    return (
+      <div className="flex flex-col items-start">
+        <span>{medication.time}</span>
+        {medication.timing && (
+          <Badge variant="outline" className="mt-1 text-xs">
+            {timingText}
+          </Badge>
+        )}
+      </div>
+    );
   };
   
   // Display a placeholder if medication name is empty
   const getMedicationName = (medication: Medication) => {
-    return medication.name || "Unnamed Medication";
+    if (!medication.name) return "Unnamed Medication";
+    
+    // Return name with generic name if available (in this example, we'll assume it's in parentheses in the name)
+    return medication.name;
+  };
+  
+  // Get status component
+  const getStatusComponent = (medication: Medication) => {
+    if (medication.status === 'taken') {
+      return (
+        <div className="flex items-center text-green-600">
+          <CheckCircle className="h-5 w-5 mr-1" />
+          <span className="text-sm font-medium">Taken</span>
+        </div>
+      );
+    } else if (medication.status === 'missed') {
+      return (
+        <div className="flex items-center text-red-600">
+          <XCircle className="h-5 w-5 mr-1" />
+          <span className="text-sm font-medium">Missed</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onMarkAsTaken(medication.id)}
+          >
+            Taken
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-red-500 border-red-200 hover:bg-red-50"
+            onClick={() => onMarkAsMissed(medication.id)}
+          >
+            Missed
+          </Button>
+        </div>
+      );
+    }
   };
 
   return (
@@ -88,69 +156,61 @@ export default function MedicationSchedule({
                 <Button className="mt-4" onClick={() => navigate("/scan")}>Add Medication</Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-[auto,1fr,auto] gap-4 items-center py-2 border-b text-sm font-medium text-gray-500">
-                  <div>Time</div>
-                  <div>Medication</div>
-                  <div>Status</div>
-                </div>
-                {medications
-                  .sort((a, b) => a.time.localeCompare(b.time))
-                  .map((med) => (
-                    <div 
-                      key={med.id} 
-                      className="grid grid-cols-[auto,1fr,auto] gap-4 items-center py-3 border-b last:border-0"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-gray-400" />
-                        <span>{med.time}</span>
-                      </div>
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          <Pill className="h-4 w-4 text-medsnap-blue" />
-                          {getMedicationName(med)}
-                        </div>
-                        <div className="text-sm text-gray-500">{med.dosage || "No dosage specified"} - {med.frequency}</div>
-                        {med.instructions && (
-                          <div className="text-xs text-gray-500 mt-1">{med.instructions}</div>
-                        )}
-                        <div className="flex gap-1 mt-1">
-                          {getTimingLabel(med.timing)}
-                        </div>
-                      </div>
-                      <div>
-                        {med.status === 'taken' ? (
-                          <div className="flex items-center text-green-600">
-                            <CheckCircle className="h-5 w-5 mr-1" />
-                            <span className="text-sm font-medium">Taken</span>
-                          </div>
-                        ) : med.status === 'missed' ? (
-                          <div className="flex items-center text-red-600">
-                            <XCircle className="h-5 w-5 mr-1" />
-                            <span className="text-sm font-medium">Missed</span>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => onMarkAsTaken(med.id)}
-                            >
-                              Taken
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="text-red-500 border-red-200 hover:bg-red-50"
-                              onClick={() => onMarkAsMissed(med.id)}
-                            >
-                              Missed
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">#</TableHead>
+                      <TableHead>Medication</TableHead>
+                      <TableHead className="w-[120px]">Morning</TableHead>
+                      <TableHead className="w-[120px]">Afternoon</TableHead>
+                      <TableHead className="w-[120px]">Evening</TableHead>
+                      <TableHead className="w-[180px]">Instructions</TableHead>
+                      <TableHead className="w-[120px] text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {medications
+                      .sort((a, b) => a.time.localeCompare(b.time))
+                      .map((med, index) => (
+                        <TableRow key={med.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center">
+                              <ListOrdered className="h-4 w-4 text-gray-400 mr-2" />
+                              {index + 1}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <div className="font-medium flex items-center gap-2">
+                                <Pill className="h-4 w-4 text-medsnap-blue" />
+                                {getMedicationName(med)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {med.dosage || "No dosage specified"}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getTimingDisplay(med, 'morning')}</TableCell>
+                          <TableCell>{getTimingDisplay(med, 'afternoon')}</TableCell>
+                          <TableCell>{getTimingDisplay(med, 'evening')}</TableCell>
+                          <TableCell>
+                            {med.instructions ? (
+                              <div className="flex items-start">
+                                <FileText className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
+                                <span className="text-sm">{med.instructions}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">No special instructions</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {getStatusComponent(med)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </TabsContent>

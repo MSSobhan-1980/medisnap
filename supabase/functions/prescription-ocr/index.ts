@@ -36,11 +36,33 @@ serve(async (req) => {
       });
     }
 
-    // Use Gemini 1.5 Flash model for text extraction
+    // Use Gemini 1.5 Flash model for text extraction and structured data
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Prepare image input
-    const prompt = "Extract text from this prescription or medication label. Focus on medication name, dosage, and instructions.";
+    // Prepare structured prompt for extraction
+    const prompt = `Extract detailed information from this prescription or medication label. 
+    Return a JSON array of medications with these fields for each medication:
+    - medication_name: The name of the medication (required)
+    - dosage: The dosage strength (e.g., 10mg, 500mg)
+    - frequency: How often to take it (e.g., once daily, twice daily, as needed)
+    - timing: When to take it relative to food (before_food, with_food, or after_food)
+    - instructions: Any special instructions
+    - start_date: When to start (if specified)
+    - end_date: When to stop (if specified)
+
+    Format your response ONLY as valid JSON wrapped in code blocks, like this:
+    \`\`\`json
+    [
+      {
+        "medication_name": "Example Med",
+        "dosage": "10mg",
+        "frequency": "once daily",
+        "timing": "after_food",
+        "instructions": "Take with water"
+      }
+    ]
+    \`\`\`
+    Include ALL medications visible in the prescription.`;
     
     console.log("Sending request to Google Generative AI");
     const result = await model.generateContent({
@@ -56,7 +78,7 @@ serve(async (req) => {
     const extractedText = result.response.text() || "";
 
     console.log("Text extracted successfully");
-    return new Response(JSON.stringify({ text: extractedText }), {
+    return new Response(JSON.stringify({ text: extractedText, raw: extractedText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

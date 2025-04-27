@@ -158,46 +158,52 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
     console.log("Processing medications array:", medicationsArray);
 
     return medicationsArray.map(med => {
-      let timing: 'before_food' | 'with_food' | 'after_food' | undefined = undefined;
+      const dosingPattern = med.dosing_pattern || "1+0+0"; // Default to morning dose
+      const [morning, afternoon, evening] = dosingPattern.split("+").map(Number);
+      
+      let timing: 'before_food' | 'with_food' | 'after_food' | undefined = 
+        med.timing as 'before_food' | 'with_food' | 'after_food' || undefined;
       
       const instructions = (med.instructions || "").toLowerCase();
-      if (instructions.includes("before meal") || instructions.includes("before food")) {
-        timing = 'before_food';
-      } else if (instructions.includes("with meal") || instructions.includes("with food")) {
-        timing = 'with_food';
-      } else if (instructions.includes("after meal") || instructions.includes("after food")) {
-        timing = 'after_food';
+      if (!timing) {
+        if (instructions.includes("before meal") || instructions.includes("before food")) {
+          timing = 'before_food';
+        } else if (instructions.includes("with meal") || instructions.includes("with food")) {
+          timing = 'with_food';
+        } else if (instructions.includes("after meal") || instructions.includes("after food")) {
+          timing = 'after_food';
+        }
       }
       
+      // Determine frequency based on dosing pattern
       let frequency = "once-daily";
-      const freqText = (med.frequency || "").toLowerCase();
-      if (freqText.includes("twice") || freqText.includes("2 times") || freqText.includes("two times")) {
+      const totalDoses = morning + afternoon + evening;
+      if (totalDoses === 2) {
         frequency = "twice-daily";
-      } else if (freqText.includes("three") || freqText.includes("3 times")) {
+      } else if (totalDoses === 3) {
         frequency = "three-times-daily";
-      } else if (freqText.includes("four") || freqText.includes("4 times")) {
+      } else if (totalDoses === 4) {
         frequency = "four-times-daily";
-      } else if (freqText.includes("as needed") || freqText.includes("when needed")) {
-        frequency = "as-needed";
       }
       
+      // Set the primary time based on the first non-zero dose in the pattern
       let time = "08:00";
-      if (instructions.includes("evening") || instructions.includes("night")) {
-        time = "20:00";
-      } else if (instructions.includes("afternoon")) {
+      if (morning === 0 && afternoon === 1) {
         time = "14:00";
+      } else if (morning === 0 && afternoon === 0 && evening === 1) {
+        time = "20:00";
       }
-      
+
       return {
-        name: med.medication_name || "",
+        name: `${med.medication_name}${med.generic_name ? ` (${med.generic_name})` : ''}`,
         dosage: med.dosage || "",
-        frequency: frequency,
-        time: med.time || time,
+        frequency,
+        time,
         instructions: med.instructions || "",
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: med.start_date || new Date().toISOString().split('T')[0],
         endDate: med.end_date || undefined,
-        timing: timing,
-        notes: med.notes || undefined
+        timing,
+        notes: `Dosing pattern: ${dosingPattern}`
       };
     });
   } catch (error) {

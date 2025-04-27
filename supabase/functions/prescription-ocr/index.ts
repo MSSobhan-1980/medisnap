@@ -10,13 +10,11 @@ const corsHeaders = {
 const genAI = new GoogleGenerativeAI(Deno.env.get("GOOGLE_AI_API_KEY"));
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Basic authentication check
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
@@ -27,7 +25,6 @@ serve(async (req) => {
 
     const { imageBase64 } = await req.json();
     
-    // Verify API key is available
     if (!Deno.env.get("GOOGLE_AI_API_KEY")) {
       console.error("Google AI API key is not configured");
       return new Response(JSON.stringify({ error: "Google AI API key is not configured" }), {
@@ -36,16 +33,22 @@ serve(async (req) => {
       });
     }
 
-    // Use Gemini 1.5 Flash model for text extraction and structured data
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // Prepare structured prompt for extraction
     const prompt = `Extract detailed information from this prescription or medication label. 
+    Pay special attention to dosing schedules using these patterns:
+    - (1+0+0) means morning dose only
+    - (0+1+0) means afternoon dose only
+    - (0+0+1) means evening dose only
+    - (1+1+0) means morning and afternoon doses
+    - (1+1+1) means doses three times a day
+
     Return a JSON array of medications with these fields for each medication:
     - medication_name: The name of the medication (required)
+    - generic_name: The generic name if available
     - dosage: The dosage strength (e.g., 10mg, 500mg)
-    - frequency: How often to take it (e.g., once daily, twice daily, as needed)
-    - timing: When to take it relative to food (before_food, with_food, or after_food)
+    - dosing_pattern: The pattern as seen (e.g., "1+0+0", "1+1+1")
+    - timing: When to take relative to food (before_food, with_food, or after_food)
     - instructions: Any special instructions
     - start_date: When to start (if specified)
     - end_date: When to stop (if specified)
@@ -55,8 +58,9 @@ serve(async (req) => {
     [
       {
         "medication_name": "Example Med",
+        "generic_name": "Generic Name",
         "dosage": "10mg",
-        "frequency": "once daily",
+        "dosing_pattern": "1+0+0",
         "timing": "after_food",
         "instructions": "Take with water"
       }

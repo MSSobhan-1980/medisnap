@@ -25,8 +25,10 @@ export function useMedications() {
         const data = await getMedications(user.id, activeMember?.id);
         
         // Ensure data from Supabase has the correct format for our application
+        // The database uses snake_case while our application uses camelCase
         const formattedData = data.map(med => ({
           ...med,
+          // These properties need to be mapped explicitly
           userId: med.user_id,
           startDate: med.start_date,
           endDate: med.end_date,

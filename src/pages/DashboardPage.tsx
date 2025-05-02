@@ -1,28 +1,27 @@
 
 import { useState } from "react";
-import { User } from "lucide-react";
+import { User, Plus, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useMedications } from "@/hooks/useMedications";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
-
-import { Calendar } from "@/components/ui/calendar";
 import { format, isWithinInterval, startOfDay } from "date-fns";
 import { useNavigate } from "react-router-dom";
-
 import MedicationSchedule from "@/components/MedicationSchedule";
+import AddMedicationForm from "@/components/AddMedicationForm";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function DashboardPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activePatient, setActivePatient] = useState("self");
+  const [isAddMedicationOpen, setIsAddMedicationOpen] = useState(false);
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { medications, loading, error, markMedicationStatus, deleteMedication } = useMedications();
 
   const patients = [
-    { id: "self", name: profile?.full_name ? `${profile.full_name} (You)` : "You" },
-    { id: "parent", name: "Robert Smith" },
+    { id: "self", name: profile?.full_name ? `${profile.full_name} (You)` : "You" }
   ];
 
   const formattedDate = date ? format(date, "PPP") : "";
@@ -43,11 +42,6 @@ export default function DashboardPage() {
     
     return selectedDate >= startDate;
   });
-
-  console.log("Current medications:", medications);
-  console.log("Filtered medications:", filteredMedications);
-  console.log("Current date:", date);
-  console.log("Current profile:", profile);
 
   const handleMarkAsTaken = async (medicationId: string) => {
     await markMedicationStatus(medicationId, 'taken');
@@ -90,16 +84,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle>Calendar</CardTitle>
-            <CardDescription>Select a date to view medications</CardDescription>
+            <CardTitle>Dashboard</CardTitle>
+            <CardDescription>Manage your medications</CardDescription>
           </CardHeader>
           <CardContent>
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md border"
-            />
             <div className="mt-6">
               <div className="text-lg font-semibold mb-2">
                 {date ? formattedDate : "Select a date"}
@@ -133,6 +121,34 @@ export default function DashboardPage() {
                   </div>
                 </>
               )}
+            </div>
+            
+            <div className="mt-6">
+              <Dialog open={isAddMedicationOpen} onOpenChange={setIsAddMedicationOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full flex items-center gap-2">
+                    <Plus size={16} />
+                    Add Medication Manually
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Add New Medication</DialogTitle>
+                    <DialogDescription>
+                      Enter medication details to add it to your schedule
+                    </DialogDescription>
+                  </DialogHeader>
+                  <AddMedicationForm onComplete={() => setIsAddMedicationOpen(false)} />
+                </DialogContent>
+              </Dialog>
+              
+              <Button 
+                variant="outline" 
+                className="w-full mt-2"
+                onClick={() => navigate("/scan")}
+              >
+                Scan Prescription
+              </Button>
             </div>
           </CardContent>
         </Card>

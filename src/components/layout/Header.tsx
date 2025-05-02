@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, UserRound, Bell } from "lucide-react";
@@ -22,7 +23,7 @@ export default function Header({ isLanding = false }: HeaderProps) {
     <header className={`${isLanding ? 'bg-white py-5' : 'bg-white shadow-sm sticky top-0 z-50'}`}>
       <div className="container mx-auto py-2 px-4 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-1">
-          <span className="font-bold text-2xl text-blue-500">Med</span>
+          <span className="font-bold text-2xl text-blue-500">Medi</span>
           <span className="font-bold text-2xl text-gray-800">Snap</span>
         </Link>
 

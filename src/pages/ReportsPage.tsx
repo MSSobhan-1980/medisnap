@@ -31,7 +31,17 @@ export default function ReportsPage() {
   
   // Filter medications by time of day
   const getMedicationsByTiming = (timing: string) => {
-    return medications.filter(med => med.timing === timing || (med.timing || '').includes(timing));
+    return medications.filter(med => {
+      // Determine if the medication is for the specified time of day
+      if (timing === 'morning') {
+        return med.timing === 'morning' || med.timing === 'before_food' || (med.time && med.time.toLowerCase().includes('am'));
+      } else if (timing === 'afternoon') {
+        return med.timing === 'afternoon' || med.timing === 'with_food' || (med.time && med.time.toLowerCase().includes('noon'));
+      } else if (timing === 'evening') {
+        return med.timing === 'evening' || med.timing === 'after_food' || (med.time && med.time.toLowerCase().includes('pm'));
+      }
+      return false;
+    });
   };
   
   const morningMeds = getMedicationsByTiming('morning');
@@ -45,9 +55,11 @@ export default function ReportsPage() {
   const eveningAdherence = calculateAdherence(eveningMeds);
   
   // Get medication history (sorted by date)
-  const medicationHistory = [...medications].sort((a, b) => {
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
+  const medicationHistory = [...medications]
+    .filter(med => med.updated_at)
+    .sort((a, b) => {
+      return new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime();
+    });
   
   // Get unique medications for adherence breakdown
   const uniqueMedications = [...new Map(medications.map(med => [med.name, med])).values()];

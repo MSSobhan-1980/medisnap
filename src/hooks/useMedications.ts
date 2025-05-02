@@ -23,8 +23,20 @@ export function useMedications() {
       setLoading(true);
       try {
         const data = await getMedications(user.id, activeMember?.id);
-        console.log("Fetched medications:", data);
-        setMedications(data);
+        
+        // Ensure data from Supabase has the correct format for our application
+        const formattedData = data.map(med => ({
+          ...med,
+          userId: med.user_id,
+          startDate: med.start_date,
+          endDate: med.end_date,
+          familyMemberId: med.family_member_id,
+          // Make sure we include updated_at
+          updated_at: med.updated_at || new Date().toISOString()
+        }));
+        
+        console.log("Fetched medications:", formattedData);
+        setMedications(formattedData);
         setError(null);
       } catch (err: any) {
         console.error("Error fetching medications:", err);

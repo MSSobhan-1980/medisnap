@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 
 interface FooterProps {
@@ -25,7 +24,7 @@ export default function Footer({ isLanding = false }: FooterProps) {
               <Link to="/" className="text-gray-600 hover:text-blue-500 text-sm">
                 Home
               </Link>
-              <Link to="/sign-in" className="text-gray-600 hover:text-blue-500 text-sm">
+              <Link to="/auth" className="text-gray-600 hover:text-blue-500 text-sm">
                 Sign In
               </Link>
               <Link to="/privacy-policy" className="text-gray-600 hover:text-blue-500 text-sm">

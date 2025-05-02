@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,8 +44,8 @@ export default function LandingPage() {
           <div className="lg:w-1/2 relative">
             <div className="rounded-2xl overflow-hidden shadow-xl">
               <img 
-                src="/public/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
-                alt="MedSnap AI App Interface"
+                src="/lovable-uploads/ad095721-ae86-4ce0-b72c-417bf79d1250.png"
+                alt="MediSnap AI App Interface"
                 className="w-full h-auto object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 mix-blend-overlay"></div>

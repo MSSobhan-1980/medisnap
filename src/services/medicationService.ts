@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
@@ -187,10 +188,12 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
       }
       
       // Set the primary time based on the first non-zero dose in the pattern
-      let time = "08:00";
-      if (morning === 0 && afternoon === 1) {
+      let time = "08:00"; // Default morning time
+      if (morning > 0) {
+        time = "08:00";
+      } else if (afternoon > 0) {
         time = "14:00";
-      } else if (morning === 0 && afternoon === 0 && evening === 1) {
+      } else if (evening > 0) {
         time = "20:00";
       }
 

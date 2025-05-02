@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { Calendar as CalendarIcon, User } from "lucide-react";
+import { User } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useMedications } from "@/hooks/useMedications";
@@ -81,7 +82,6 @@ export default function DashboardPage() {
             ))}
           </select>
           <Button onClick={() => setDate(new Date())}>
-            <Calendar className="mr-2 h-4 w-4" />
             Today
           </Button>
         </div>

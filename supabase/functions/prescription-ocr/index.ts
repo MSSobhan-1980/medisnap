@@ -7,8 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const genAI = new GoogleGenerativeAI(Deno.env.get("GOOGLE_AI_API_KEY"));
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,7 +23,9 @@ serve(async (req) => {
 
     const { imageBase64 } = await req.json();
     
-    if (!Deno.env.get("GOOGLE_AI_API_KEY")) {
+    // Check if API key exists before creating client
+    const apiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!apiKey) {
       console.error("Google AI API key is not configured");
       return new Response(JSON.stringify({ error: "Google AI API key is not configured" }), {
         status: 500,
@@ -33,6 +33,8 @@ serve(async (req) => {
       });
     }
 
+    // Initialize Google Generative AI with API key
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Extract detailed information from this prescription or medication label. 
@@ -69,22 +71,32 @@ serve(async (req) => {
     Include ALL medications visible in the prescription.`;
     
     console.log("Sending request to Google Generative AI");
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [
-        { text: prompt },
-        { inlineData: { 
-          mimeType: "image/jpeg", 
-          data: imageBase64 
-        }}
-      ]}],
-    });
+    try {
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [
+          { text: prompt },
+          { inlineData: { 
+            mimeType: "image/jpeg", 
+            data: imageBase64 
+          }}
+        ]}],
+      });
 
-    const extractedText = result.response.text() || "";
-
-    console.log("Text extracted successfully");
-    return new Response(JSON.stringify({ text: extractedText, raw: extractedText }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      const extractedText = result.response.text() || "";
+      console.log("Text extracted successfully");
+      return new Response(JSON.stringify({ text: extractedText, raw: extractedText }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (aiError) {
+      console.error("AI processing error:", aiError);
+      return new Response(JSON.stringify({ 
+        error: "Failed to process image with AI", 
+        details: aiError.message 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   } catch (error) {
     console.error("Error in prescription-ocr function:", error);
     return new Response(JSON.stringify({ error: error.message }), {

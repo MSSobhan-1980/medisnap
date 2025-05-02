@@ -1,4 +1,5 @@
 
+
 export interface Medication {
   id: string;
   name: string;
@@ -28,3 +29,4 @@ export interface MedicationFormData {
   timing?: 'before_food' | 'with_food' | 'after_food' | 'morning' | 'afternoon' | 'evening';
   notes?: string;
 }
+

@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Medication } from '@/types/medication';
@@ -23,22 +24,8 @@ export function useMedications() {
       setLoading(true);
       try {
         const data = await getMedications(user.id, activeMember?.id);
-        
-        // Ensure data from Supabase has the correct format for our application
-        // The database uses snake_case while our application uses camelCase
-        const formattedData = data.map(med => ({
-          ...med,
-          // These properties need to be mapped explicitly
-          userId: med.user_id,
-          startDate: med.start_date,
-          endDate: med.end_date,
-          familyMemberId: med.family_member_id,
-          // Make sure we include updated_at
-          updated_at: med.updated_at || new Date().toISOString()
-        }));
-        
-        console.log("Fetched medications:", formattedData);
-        setMedications(formattedData);
+        console.log("Fetched medications:", data);
+        setMedications(data);
         setError(null);
       } catch (err: any) {
         console.error("Error fetching medications:", err);

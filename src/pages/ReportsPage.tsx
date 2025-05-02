@@ -1,19 +1,56 @@
 
-import { useState } from "react";
-import { Calendar, ChevronDown, Download, FileText, Users } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useMedications } from "@/hooks/useMedications";
+import { ChevronDown, Download, FileText, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import FamilyMemberSelector from "@/components/FamilyMemberSelector";
+
+// Helper to calculate overall adherence rate
+const calculateAdherence = (medications = []) => {
+  if (!medications.length) return 0;
+  
+  const taken = medications.filter(med => med.status === 'taken').length;
+  return Math.round((taken / medications.length) * 100);
+};
 
 export default function ReportsPage() {
-  const [activePatient, setActivePatient] = useState("self");
+  const { user, loading: authLoading, activeMember } = useAuth();
+  const { medications, loading: medsLoading } = useMedications();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("adherence");
   
-  // Mock data for patients
-  const patients = [
-    { id: "self", name: "Jane Smith (You)" },
-    { id: "parent", name: "Robert Smith" },
-  ];
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+  
+  // Filter medications by time of day
+  const getMedicationsByTiming = (timing: string) => {
+    return medications.filter(med => med.timing === timing || (med.timing || '').includes(timing));
+  };
+  
+  const morningMeds = getMedicationsByTiming('morning');
+  const afternoonMeds = getMedicationsByTiming('afternoon');
+  const eveningMeds = getMedicationsByTiming('evening');
+  
+  // Calculate adherence rates
+  const overallAdherence = calculateAdherence(medications);
+  const morningAdherence = calculateAdherence(morningMeds);
+  const afternoonAdherence = calculateAdherence(afternoonMeds);
+  const eveningAdherence = calculateAdherence(eveningMeds);
+  
+  // Get medication history (sorted by date)
+  const medicationHistory = [...medications].sort((a, b) => {
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+  
+  // Get unique medications for adherence breakdown
+  const uniqueMedications = [...new Map(medications.map(med => [med.name, med])).values()];
 
   return (
     <div className="container max-w-6xl mx-auto px-4 py-8">
@@ -24,17 +61,7 @@ export default function ReportsPage() {
         </div>
         
         <div className="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
-          <select 
-            className="px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-medsnap-blue focus:border-transparent"
-            value={activePatient}
-            onChange={(e) => setActivePatient(e.target.value)}
-          >
-            {patients.map(patient => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name}
-              </option>
-            ))}
-          </select>
+          <FamilyMemberSelector />
           <Button>
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -59,8 +86,8 @@ export default function ReportsPage() {
                 <CardTitle className="text-sm font-medium text-gray-500">Overall Adherence</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">87%</div>
-                <p className="text-xs text-gray-500">Last 30 days</p>
+                <div className="text-3xl font-bold">{medsLoading ? "-" : `${overallAdherence}%`}</div>
+                <p className="text-xs text-gray-500">All medications</p>
               </CardContent>
             </Card>
             
@@ -69,8 +96,8 @@ export default function ReportsPage() {
                 <CardTitle className="text-sm font-medium text-gray-500">Morning Meds</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">92%</div>
-                <p className="text-xs text-gray-500">6AM - 12PM</p>
+                <div className="text-3xl font-bold">{medsLoading ? "-" : `${morningAdherence}%`}</div>
+                <p className="text-xs text-gray-500">Morning dose</p>
               </CardContent>
             </Card>
             
@@ -79,8 +106,8 @@ export default function ReportsPage() {
                 <CardTitle className="text-sm font-medium text-gray-500">Afternoon Meds</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">84%</div>
-                <p className="text-xs text-gray-500">12PM - 6PM</p>
+                <div className="text-3xl font-bold">{medsLoading ? "-" : `${afternoonAdherence}%`}</div>
+                <p className="text-xs text-gray-500">Afternoon dose</p>
               </CardContent>
             </Card>
             
@@ -89,8 +116,8 @@ export default function ReportsPage() {
                 <CardTitle className="text-sm font-medium text-gray-500">Evening Meds</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">78%</div>
-                <p className="text-xs text-gray-500">6PM - 12AM</p>
+                <div className="text-3xl font-bold">{medsLoading ? "-" : `${eveningAdherence}%`}</div>
+                <p className="text-xs text-gray-500">Evening dose</p>
               </CardContent>
             </Card>
           </div>
@@ -111,11 +138,23 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Placeholder for adherence chart */}
-              <div className="h-64 bg-gray-50 rounded-lg border flex items-center justify-center">
-                <p className="text-gray-400">Adherence chart visualization would appear here</p>
-                {/* In a real app, this would be a chart showing adherence trends */}
-              </div>
+              {medsLoading ? (
+                <div className="h-64 flex items-center justify-center">
+                  <p className="text-gray-400">Loading data...</p>
+                </div>
+              ) : medications.length === 0 ? (
+                <div className="h-64 flex items-center justify-center flex-col">
+                  <p className="text-gray-400 mb-2">No medication data available</p>
+                  <Button onClick={() => navigate("/scan")} size="sm">
+                    Add medications
+                  </Button>
+                </div>
+              ) : (
+                <div className="h-64 bg-gray-50 rounded-lg border flex items-center justify-center">
+                  <p className="text-gray-400">Adherence chart visualization would appear here</p>
+                  {/* In a real implementation, this would be a chart showing adherence over time */}
+                </div>
+              )}
             </CardContent>
           </Card>
           
@@ -125,22 +164,34 @@ export default function ReportsPage() {
               <CardDescription>Breakdown by medication</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {["Aspirin", "Metformin", "Lisinopril", "Vitamin D"].map((med, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">{med}</span>
-                      <span className="text-gray-500">{90 - i * 5}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full">
-                      <div 
-                        className={`h-2 rounded-full ${i % 2 === 0 ? 'bg-medsnap-blue' : 'bg-medsnap-green'}`}
-                        style={{ width: `${90 - i * 5}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {medsLoading ? (
+                <p className="text-center py-8 text-gray-400">Loading data...</p>
+              ) : uniqueMedications.length === 0 ? (
+                <p className="text-center py-8 text-gray-400">No medication data available</p>
+              ) : (
+                <div className="space-y-6">
+                  {uniqueMedications.map((med, i) => {
+                    // Calculate adherence for this specific medication
+                    const medInstances = medications.filter(m => m.name === med.name);
+                    const medAdherence = calculateAdherence(medInstances);
+                    
+                    return (
+                      <div key={i} className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">{med.name}</span>
+                          <span className="text-gray-500">{medAdherence}%</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full">
+                          <div 
+                            className={`h-2 rounded-full ${i % 2 === 0 ? 'bg-medsnap-blue' : 'bg-medsnap-green'}`}
+                            style={{ width: `${medAdherence}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               
               <div className="mt-8">
                 <Button className="w-full bg-medsnap-blue hover:bg-blue-600">
@@ -173,104 +224,81 @@ export default function ReportsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Date</th>
-                      <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Medication</th>
-                      <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Dosage</th>
-                      <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Time</th>
-                      <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {[
-                      {
-                        date: "Apr 21, 2025",
-                        medication: "Aspirin",
-                        dosage: "100mg",
-                        time: "08:00 AM",
-                        status: "Taken"
-                      },
-                      {
-                        date: "Apr 21, 2025",
-                        medication: "Vitamin D",
-                        dosage: "1000 IU",
-                        time: "09:30 AM",
-                        status: "Missed"
-                      },
-                      {
-                        date: "Apr 20, 2025",
-                        medication: "Aspirin",
-                        dosage: "100mg",
-                        time: "08:00 AM",
-                        status: "Taken"
-                      },
-                      {
-                        date: "Apr 20, 2025",
-                        medication: "Vitamin D",
-                        dosage: "1000 IU",
-                        time: "09:30 AM",
-                        status: "Taken"
-                      },
-                      {
-                        date: "Apr 20, 2025",
-                        medication: "Metformin",
-                        dosage: "500mg",
-                        time: "01:00 PM",
-                        status: "Taken"
-                      },
-                      {
-                        date: "Apr 20, 2025",
-                        medication: "Lisinopril",
-                        dosage: "10mg",
-                        time: "08:00 PM",
-                        status: "Taken"
-                      },
-                      {
-                        date: "Apr 19, 2025",
-                        medication: "Aspirin",
-                        dosage: "100mg",
-                        time: "08:15 AM",
-                        status: "Taken"
-                      }
-                    ].map((record, i) => (
-                      <tr key={i} className="text-sm">
-                        <td className="py-4 px-2">{record.date}</td>
-                        <td className="py-4 px-2 font-medium">{record.medication}</td>
-                        <td className="py-4 px-2">{record.dosage}</td>
-                        <td className="py-4 px-2">{record.time}</td>
-                        <td className="py-4 px-2">
-                          <span 
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              record.status === 'Taken' 
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {record.status}
-                          </span>
-                        </td>
+              {medsLoading ? (
+                <div className="py-8 text-center">
+                  <p className="text-gray-400">Loading medication history...</p>
+                </div>
+              ) : medicationHistory.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-gray-400 mb-3">No medication history available</p>
+                  <Button onClick={() => navigate("/scan")} size="sm">
+                    Add medications
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Date</th>
+                        <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Medication</th>
+                        <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Dosage</th>
+                        <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Time</th>
+                        <th className="py-3 px-2 text-left text-sm font-medium text-gray-500">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y">
+                      {medicationHistory.map((record, i) => {
+                        const date = new Date(record.updated_at);
+                        const formattedDate = date.toLocaleDateString('en-US', { 
+                          year: 'numeric',
+                          month: 'short', 
+                          day: 'numeric'
+                        });
+                        
+                        return (
+                          <tr key={i} className="text-sm">
+                            <td className="py-4 px-2">{formattedDate}</td>
+                            <td className="py-4 px-2 font-medium">{record.name}</td>
+                            <td className="py-4 px-2">{record.dosage}</td>
+                            <td className="py-4 px-2">{record.time}</td>
+                            <td className="py-4 px-2">
+                              <span 
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  record.status === 'taken' 
+                                    ? 'bg-green-100 text-green-800'
+                                    : record.status === 'missed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {record.status === 'taken' ? 'Taken' : 
+                                 record.status === 'missed' ? 'Missed' : 'Pending'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-gray-500">
-                  Showing 7 of 124 entries
+              {medicationHistory.length > 0 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-500">
+                    Showing {Math.min(medicationHistory.length, 10)} of {medicationHistory.length} entries
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled>
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={medicationHistory.length <= 10}>
+                      Next
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled>
-                    Previous
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Next
-                  </Button>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
           
@@ -281,38 +309,52 @@ export default function ReportsPage() {
                 <CardDescription>Understand patterns in missed doses</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm font-medium text-gray-500 mb-1">Most Frequently Missed</div>
-                    <div className="font-medium">Evening Medications (8:00 PM)</div>
+                {medsLoading ? (
+                  <p className="text-center py-8 text-gray-400">Loading data...</p>
+                ) : medications.filter(m => m.status === 'missed').length === 0 ? (
+                  <p className="text-center py-8 text-gray-400">No missed doses recorded</p>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm font-medium text-gray-500 mb-1">Most Frequently Missed</div>
+                      <div className="font-medium">
+                        {(() => {
+                          const missedMorning = medications.filter(m => m.status === 'missed' && (m.timing === 'morning' || (m.timing || '').includes('morning'))).length;
+                          const missedAfternoon = medications.filter(m => m.status === 'missed' && (m.timing === 'afternoon' || (m.timing || '').includes('afternoon'))).length;
+                          const missedEvening = medications.filter(m => m.status === 'missed' && (m.timing === 'evening' || (m.timing || '').includes('evening'))).length;
+                          
+                          if (missedMorning >= missedAfternoon && missedMorning >= missedEvening) {
+                            return "Morning Medications";
+                          } else if (missedAfternoon >= missedMorning && missedAfternoon >= missedEvening) {
+                            return "Afternoon Medications";
+                          } else {
+                            return "Evening Medications";
+                          }
+                        })()}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-sm font-medium text-gray-500 mb-1">Suggestion</div>
+                      <div className="font-medium">Set medication reminders to improve adherence</div>
+                    </div>
                   </div>
-                  
-                  <div>
-                    <div className="text-sm font-medium text-gray-500 mb-1">Common Reason</div>
-                    <div className="font-medium">Forgot / Was busy</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm font-medium text-gray-500 mb-1">Suggestion</div>
-                    <div className="font-medium">Set backup reminder 15 minutes after initial alert</div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
             
             <Card>
               <CardHeader>
-                <CardTitle>Medication Impact</CardTitle>
-                <CardDescription>Long-term medication effectiveness</CardDescription>
+                <CardTitle>Family Medication Overview</CardTitle>
+                <CardDescription>Medication adherence for family members</CardDescription>
               </CardHeader>
-              <CardContent className="text-center py-10">
-                <div className="text-gray-500 mb-4">
-                  <Users className="h-12 w-12 mx-auto text-gray-400" />
-                  <p className="mt-4">
-                    Upgrade to Pro+ to access medication impact analysis and health trends
+              <CardContent>
+                <div className="py-6 text-center">
+                  <p className="text-gray-500 mb-4">
+                    Use the family member selector to view medication reports for each family member
                   </p>
+                  <FamilyMemberSelector />
                 </div>
-                <Button className="mt-2">Upgrade Now</Button>
               </CardContent>
             </Card>
           </div>

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { UserRound, Settings, CreditCard, Calendar, Users } from "lucide-react";
+import { UserRound, Settings, CreditCard, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import {
   AvatarImage
 } from "@/components/ui/avatar";
 import ProfileEditor from "@/components/ProfileEditor";
+import FamilyMemberSelector from "@/components/FamilyMemberSelector";
 
 export default function ProfilePage() {
   const { user, profile, loading } = useAuth();
@@ -40,7 +41,10 @@ export default function ProfilePage() {
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">Your Profile</h1>
+      <div className="flex flex-col md:flex-row items-center mb-4 md:mb-8 justify-between">
+        <h1 className="text-3xl font-bold text-gray-800">Your Profile</h1>
+        <FamilyMemberSelector />
+      </div>
 
       {/* Profile Summary Card */}
       <Card className="mb-8">

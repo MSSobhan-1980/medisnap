@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Medication } from '@/types/medication';
@@ -6,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export function useMedications() {
-  const { user } = useAuth();
+  const { user, activeMember } = useAuth();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export function useMedications() {
 
       setLoading(true);
       try {
-        const data = await getMedications(user.id);
+        const data = await getMedications(user.id, activeMember?.id);
         console.log("Fetched medications:", data);
         setMedications(data);
         setError(null);
@@ -35,12 +36,17 @@ export function useMedications() {
     };
 
     fetchMedications();
-  }, [user]);
+  }, [user, activeMember]);
 
   useEffect(() => {
     if (!user) return;
 
-    console.log("Setting up real-time subscription for medications for user:", user.id);
+    const filter = activeMember 
+      ? `user_id=eq.${user.id}&family_member_id=eq.${activeMember.id}`
+      : `user_id=eq.${user.id}&family_member_id=is.null`;
+
+    console.log("Setting up real-time subscription for medications with filter:", filter);
+    
     const channel = supabase
       .channel('medications-changes')
       .on('postgres_changes', 
@@ -48,12 +54,12 @@ export function useMedications() {
           event: '*',
           schema: 'public',
           table: 'medications',
-          filter: `user_id=eq.${user.id}`
+          filter
         }, 
         async (payload) => {
           console.log("Received real-time update:", payload);
           try {
-            const updatedMedications = await getMedications(user.id);
+            const updatedMedications = await getMedications(user.id, activeMember?.id);
             console.log("Updated medications after change:", updatedMedications);
             setMedications(updatedMedications);
           } catch (err) {
@@ -67,7 +73,7 @@ export function useMedications() {
       console.log("Cleaning up real-time subscription");
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, activeMember]);
 
   const markMedicationStatus = async (medicationId: string, status: 'taken' | 'missed' | 'pending') => {
     try {

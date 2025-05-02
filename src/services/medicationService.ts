@@ -2,12 +2,20 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
-export const getMedications = async (userId: string): Promise<Medication[]> => {
-  const { data, error } = await supabase
+export const getMedications = async (userId: string, familyMemberId?: string | null): Promise<Medication[]> => {
+  let query = supabase
     .from('medications')
     .select('*')
-    .eq('user_id', userId)
-    .order('time');
+    .eq('user_id', userId);
+
+  // Filter by family member if provided
+  if (familyMemberId) {
+    query = query.eq('family_member_id', familyMemberId);
+  } else {
+    query = query.is('family_member_id', null);
+  }
+
+  const { data, error } = await query.order('time');
 
   if (error) throw error;
   
@@ -25,12 +33,13 @@ export const getMedications = async (userId: string): Promise<Medication[]> => {
     endDate: item.end_date || undefined,
     userId: item.user_id,
     timing: item.timing as 'before_food' | 'with_food' | 'after_food' || undefined,
-    notes: item.notes || undefined
+    notes: item.notes || undefined,
+    familyMemberId: item.family_member_id || undefined
   }));
 };
 
-export const addMedication = async (userId: string, data: MedicationFormData): Promise<Medication> => {
-  console.log("Adding medication with data:", data);
+export const addMedication = async (userId: string, data: MedicationFormData, familyMemberId?: string | null): Promise<Medication> => {
+  console.log("Adding medication with data:", data, "for family member:", familyMemberId);
   
   const { data: newMedication, error } = await supabase
     .from('medications')
@@ -45,7 +54,8 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
       start_date: data.startDate,
       end_date: data.endDate,
       timing: data.timing,
-      notes: data.notes
+      notes: data.notes,
+      family_member_id: familyMemberId
     }])
     .select()
     .single();
@@ -69,12 +79,13 @@ export const addMedication = async (userId: string, data: MedicationFormData): P
     endDate: newMedication.end_date || undefined,
     userId: newMedication.user_id,
     timing: newMedication.timing as 'before_food' | 'with_food' | 'after_food' || undefined,
-    notes: newMedication.notes || undefined
+    notes: newMedication.notes || undefined,
+    familyMemberId: newMedication.family_member_id || undefined
   };
 };
 
-export const addMultipleMedications = async (userId: string, data: MedicationFormData[]): Promise<Medication[]> => {
-  console.log("Adding multiple medications with data:", data);
+export const addMultipleMedications = async (userId: string, data: MedicationFormData[], familyMemberId?: string | null): Promise<Medication[]> => {
+  console.log("Adding multiple medications with data:", data, "for family member:", familyMemberId);
   
   const medicationsToInsert = data.map(med => ({
     user_id: userId,
@@ -87,7 +98,8 @@ export const addMultipleMedications = async (userId: string, data: MedicationFor
     start_date: med.startDate,
     end_date: med.endDate,
     timing: med.timing,
-    notes: med.notes
+    notes: med.notes,
+    family_member_id: familyMemberId
   }));
   
   const { data: newMedications, error } = await supabase
@@ -114,7 +126,8 @@ export const addMultipleMedications = async (userId: string, data: MedicationFor
     endDate: med.end_date || undefined,
     userId: med.user_id,
     timing: med.timing as 'before_food' | 'with_food' | 'after_food' || undefined,
-    notes: med.notes || undefined
+    notes: med.notes || undefined,
+    familyMemberId: med.family_member_id || undefined
   }));
 };
 

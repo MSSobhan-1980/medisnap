@@ -12,6 +12,7 @@ export interface Medication {
   userId: string;
   timing?: 'before_food' | 'with_food' | 'after_food';
   notes?: string;
+  familyMemberId?: string;
 }
 
 export interface MedicationFormData {

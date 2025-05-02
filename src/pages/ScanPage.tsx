@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { useState } from "react";
 import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
@@ -17,27 +16,34 @@ import { MedicationFormData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 
 async function callEdgeFn(path: string, body: Record<string, any>) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || '';
-  
-  const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(body),
-  });
-  
-  const responseData = await res.json();
-  
-  if (!res.ok) {
-    console.error("API Error:", res.status, responseData);
-    throw new Error(responseData.error || `API error: ${res.status}`);
+  try {
+    // Get the current supabase session and token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    const apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbmVkY2RqY2t3Y3Zxam9hZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzMzMTEsImV4cCI6MjA2MDkwOTMxMX0.7qkDnR3xC6QiBua9wG5cBC0Y9mWJL7ZXOg555FxlG8o";
+    
+    const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : '',
+        "apikey": apikey
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const responseData = await res.json();
+      console.error("API Error:", res.status, responseData);
+      throw new Error(`API error: ${res.status}`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error("Error in callEdgeFn:", error);
+    throw error;
   }
-  
-  return responseData;
 }
 
 export default function ScanPage() {
@@ -474,4 +480,3 @@ export default function ScanPage() {
     </div>
   );
 }
-

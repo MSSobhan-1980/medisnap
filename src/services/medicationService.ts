@@ -159,12 +159,17 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
     console.log("Processing medications array:", medicationsArray);
 
     return medicationsArray.map(med => {
-      const dosingPattern = med.dosing_pattern || "1+0+0"; // Default to morning dose
+      // Default to morning dose if no pattern specified
+      const dosingPattern = med.dosing_pattern || "1+0+0";
+      
+      // Parse dosing pattern into individual doses
       const [morning, afternoon, evening] = dosingPattern.split("+").map(Number);
       
+      // Set timing information (before_food, with_food, after_food)
       let timing: 'before_food' | 'with_food' | 'after_food' | undefined = 
         med.timing as 'before_food' | 'with_food' | 'after_food' || undefined;
       
+      // Try to infer timing from instructions if not directly provided
       const instructions = (med.instructions || "").toLowerCase();
       if (!timing) {
         if (instructions.includes("before meal") || instructions.includes("before food")) {
@@ -179,6 +184,7 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
       // Determine frequency based on dosing pattern
       let frequency = "once-daily";
       const totalDoses = morning + afternoon + evening;
+      
       if (totalDoses === 2) {
         frequency = "twice-daily";
       } else if (totalDoses === 3) {
@@ -197,12 +203,22 @@ export const processAIMedicationData = async (extractedData: any): Promise<Medic
         time = "20:00";
       }
 
+      // Generate a more detailed instructions field including dosing pattern
+      const detailedInstructions = [
+        med.instructions || "",
+        `Dosing schedule: ${dosingPattern}`,
+        morning > 0 ? `${morning} dose(s) in morning` : "",
+        afternoon > 0 ? `${afternoon} dose(s) in afternoon` : "",
+        evening > 0 ? `${evening} dose(s) in evening` : "",
+        timing ? `Take ${timing.replace("_", " ")}` : ""
+      ].filter(Boolean).join(". ");
+
       return {
         name: `${med.medication_name}${med.generic_name ? ` (${med.generic_name})` : ''}`,
         dosage: med.dosage || "",
         frequency,
         time,
-        instructions: med.instructions || "",
+        instructions: detailedInstructions,
         startDate: med.start_date || new Date().toISOString().split('T')[0],
         endDate: med.end_date || undefined,
         timing,

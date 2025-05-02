@@ -12,10 +12,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Log the incoming request headers for debugging
+  console.log("Headers:", Object.fromEntries(req.headers.entries()));
+
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+    // Make auth header optional for this function - API key is enough
+    const apiKey = req.headers.get("apikey") || req.headers.get("authorization")?.split(" ")?.[1];
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "Missing API key" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

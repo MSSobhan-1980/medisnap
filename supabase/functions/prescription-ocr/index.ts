@@ -1,4 +1,5 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.2.1";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -12,10 +13,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Log the incoming request headers for debugging
+  console.log("Headers:", Object.fromEntries(req.headers.entries()));
+
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+    // Make auth header optional for this function - API key is enough
+    const apiKey = req.headers.get("apikey") || req.headers.get("authorization")?.split(" ")?.[1];
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "Missing API key" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -24,8 +29,8 @@ serve(async (req) => {
     const { imageBase64 } = await req.json();
     
     // Check if API key exists before creating client
-    const apiKey = Deno.env.get("GOOGLE_AI_API_KEY");
-    if (!apiKey) {
+    const aiApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!aiApiKey) {
       console.error("Google AI API key is not configured");
       return new Response(JSON.stringify({ error: "Google AI API key is not configured" }), {
         status: 500,
@@ -34,7 +39,7 @@ serve(async (req) => {
     }
 
     // Initialize Google Generative AI with API key
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(aiApiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Extract detailed information from this prescription or medication label. 

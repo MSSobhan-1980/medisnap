@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import MedicationSchedule from "@/components/MedicationSchedule";
 import AddMedicationForm from "@/components/AddMedicationForm";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import MedicationReminderList from "@/components/MedicationReminderList";
 
 export default function DashboardPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -149,6 +150,10 @@ export default function DashboardPage() {
               >
                 Scan Prescription
               </Button>
+            </div>
+
+            <div className="mt-6">
+              <MedicationReminderList />
             </div>
           </CardContent>
         </Card>

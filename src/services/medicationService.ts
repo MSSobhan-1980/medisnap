@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
@@ -100,16 +101,20 @@ export async function addMedication(userId: string, medicationData: MedicationFo
 export async function updateMedication(medicationId: string, medicationData: Partial<MedicationFormData>): Promise<Medication | null> {
   try {
     // Convert camelCase to snake_case for database
-    const dbData: any = {};
+    const dbData: Record<string, any> = {};
+    
+    if (medicationData.name !== undefined) dbData.name = medicationData.name;
+    if (medicationData.dosage !== undefined) dbData.dosage = medicationData.dosage;
+    if (medicationData.frequency !== undefined) dbData.frequency = medicationData.frequency;
+    if (medicationData.time !== undefined) dbData.time = medicationData.time;
+    if (medicationData.instructions !== undefined) dbData.instructions = medicationData.instructions;
     if (medicationData.startDate !== undefined) dbData.start_date = medicationData.startDate;
     if (medicationData.endDate !== undefined) dbData.end_date = medicationData.endDate;
+    if (medicationData.timing !== undefined) dbData.timing = medicationData.timing;
+    if (medicationData.notes !== undefined) dbData.notes = medicationData.notes;
     
-    // Add other fields directly (no name conversion needed)
-    for (const [key, value] of Object.entries(medicationData)) {
-      if (key !== 'startDate' && key !== 'endDate') {
-        dbData[key] = value;
-      }
-    }
+    // Set updated_at timestamp
+    dbData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('medications')
@@ -145,7 +150,7 @@ export async function updateMedication(medicationId: string, medicationData: Par
     };
   } catch (error) {
     console.error("Error updating medication:", error);
-    return null;
+    throw error;
   }
 }
 

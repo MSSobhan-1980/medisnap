@@ -1,5 +1,4 @@
 
-
 export interface Medication {
   id: string;
   name: string;
@@ -30,3 +29,14 @@ export interface MedicationFormData {
   notes?: string;
 }
 
+// Used to map OCR extracted data to our app format
+export interface OcrMedicationData {
+  medication_name?: string;
+  generic_name?: string;
+  dosage?: string;
+  dosing_pattern?: string;
+  timing?: 'before_food' | 'with_food' | 'after_food';
+  instructions?: string;
+  start_date?: string;
+  end_date?: string;
+}

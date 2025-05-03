@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
@@ -191,33 +190,72 @@ export async function processAIMedicationData(aiResult: any): Promise<Medication
     // This function processes AI-extracted medication data
     // Convert the AI result into proper medication form data
     let medications: MedicationFormData[] = [];
+    let extractedData: any[] = [];
     
-    if (Array.isArray(aiResult)) {
-      // If the AI result is already an array of medications
-      medications = aiResult.map(med => ({
-        name: med.name || "",
-        dosage: med.dosage || "",
-        frequency: med.frequency || "once-daily",
-        time: med.time || "08:00",
-        instructions: med.instructions || "",
-        startDate: new Date().toISOString().split('T')[0], // Default to today
-        endDate: med.endDate || undefined,
-        timing: med.timing as Medication['timing'] || undefined,
-        notes: med.notes || ""
-      }));
-    } else if (typeof aiResult === 'object' && aiResult !== null) {
-      // If the AI result is a single medication object
-      medications = [{
-        name: aiResult.name || "",
-        dosage: aiResult.dosage || "",
-        frequency: aiResult.frequency || "once-daily",
-        time: aiResult.time || "08:00",
-        instructions: aiResult.instructions || "",
-        startDate: new Date().toISOString().split('T')[0], // Default to today
-        endDate: aiResult.endDate || undefined,
-        timing: aiResult.timing as Medication['timing'] || undefined,
-        notes: aiResult.notes || ""
-      }];
+    // Check if there's a JSON array in the raw text (from OCR response)
+    if (typeof aiResult === 'string') {
+      // Try to extract JSON from the string (it might be wrapped in markdown code blocks)
+      const jsonMatch = aiResult.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          extractedData = JSON.parse(jsonMatch[1]);
+        } catch (e) {
+          console.error("Error parsing JSON from OCR result:", e);
+        }
+      }
+    } else if (aiResult.raw && typeof aiResult.raw === 'string') {
+      // Try to extract JSON from the raw property
+      const jsonMatch = aiResult.raw.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          extractedData = JSON.parse(jsonMatch[1]);
+        } catch (e) {
+          console.error("Error parsing JSON from aiResult.raw:", e);
+        }
+      }
+    } else if (Array.isArray(aiResult)) {
+      // Direct array
+      extractedData = aiResult;
+    } else if (aiResult && typeof aiResult === 'object') {
+      // Single object or wrapper object
+      if (Array.isArray(aiResult.result)) {
+        extractedData = aiResult.result;
+      } else if (aiResult.result && typeof aiResult.result === 'object') {
+        extractedData = [aiResult.result];
+      }
+    }
+    
+    if (extractedData && extractedData.length > 0) {
+      medications = extractedData.map((med: any) => {
+        // Map dosing pattern to frequency
+        let frequency = "once-daily";
+        const dosingPattern = med.dosing_pattern || '';
+        
+        if (dosingPattern === "1+0+0") frequency = "once-daily";
+        else if (dosingPattern === "0+1+0") frequency = "once-daily";
+        else if (dosingPattern === "0+0+1") frequency = "once-daily";
+        else if (dosingPattern === "1+1+0") frequency = "twice-daily";
+        else if (dosingPattern === "1+0+1") frequency = "twice-daily";
+        else if (dosingPattern === "0+1+1") frequency = "twice-daily";
+        else if (dosingPattern === "1+1+1") frequency = "three-times-daily";
+        
+        // Determine default time based on dosing pattern
+        let defaultTime = "08:00";
+        if (dosingPattern === "0+1+0") defaultTime = "13:00";
+        else if (dosingPattern === "0+0+1") defaultTime = "20:00";
+        
+        return {
+          name: med.medication_name || "",
+          dosage: med.dosage || "",
+          frequency: frequency,
+          time: defaultTime,
+          instructions: med.instructions || "",
+          startDate: new Date().toISOString().split('T')[0], // Default to today
+          endDate: med.end_date || undefined,
+          timing: med.timing as Medication['timing'] || undefined,
+          notes: `Original name: ${med.medication_name || ""}\nGeneric name: ${med.generic_name || ""}\nDosing pattern: ${dosingPattern}`
+        };
+      });
     }
     
     return medications.filter(med => med.name.trim() !== ""); // Filter out medications without names

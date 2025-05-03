@@ -12,7 +12,7 @@ import MedicationImageGallery from "@/components/MedicationImageGallery";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { addMedication, addMultipleMedications, processAIMedicationData } from "@/services/medicationService";
-import { MedicationFormData } from "@/types/medication";
+import { MedicationFormData, OcrMedicationData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 
 async function callEdgeFn(path: string, body: Record<string, any>) {
@@ -54,6 +54,7 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false);
   const [ocrResult, setOcrResult] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [extractedMedications, setExtractedMedications] = useState<MedicationFormData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [addingMedication, setAddingMedication] = useState(false);
   const [medicationAdded, setMedicationAdded] = useState(false);
@@ -75,6 +76,9 @@ export default function ScanPage() {
         setImage(reader.result as string);
         setError(null); // Clear any previous errors
         setMedicationAdded(false);
+        setOcrResult(null);
+        setAiResult(null);
+        setExtractedMedications([]);
       };
 
       reader.readAsDataURL(file);
@@ -85,6 +89,7 @@ export default function ScanPage() {
     setImage(null);
     setOcrResult(null);
     setAiResult(null);
+    setExtractedMedications([]);
     setError(null);
     setMedicationAdded(false);
   };
@@ -133,6 +138,7 @@ export default function ScanPage() {
     setScanning(true);
     setOcrResult(null);
     setAiResult(null);
+    setExtractedMedications([]);
     setError(null);
     setMedicationAdded(false);
 
@@ -140,16 +146,27 @@ export default function ScanPage() {
       toast("Extracting text with OCR...");
       const imageBase64 = getBase64Content(image);
       
-      // Call the real OCR edge function
+      // Call the OCR edge function
       const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
       setOcrResult(ocrData.text);
+      console.log("OCR Results:", ocrData);
       toast.success("Text extracted!");
 
       toast("Analyzing with AI...");
-      // Call the real AI analysis edge function
+      // Call the AI analysis edge function
       const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
       setAiResult(aiData.result);
+      console.log("AI Results:", aiData);
       toast.success("Medication info extracted!");
+      
+      // Process the extracted medication data
+      const medicationData = await processAIMedicationData(aiData.result);
+      setExtractedMedications(medicationData);
+      console.log("Processed medication data:", medicationData);
+      
+      if (medicationData.length === 0) {
+        toast.warning("No medications could be detected. Please try again or enter manually.");
+      }
     } catch (err: any) {
       console.error("Error scanning:", err);
       setError(err?.message || "Failed to extract prescription info.");
@@ -160,19 +177,30 @@ export default function ScanPage() {
   };
 
   const handleAddMedication = async () => {
-    if (!user || !aiResult) return;
+    if (!user) {
+      toast.error("You must be logged in to add medications");
+      return;
+    }
     
     try {
       setAddingMedication(true);
-      const medicationData = await processAIMedicationData(aiResult);
       
-      // Use addMultipleMedications instead of addMedication to handle array
-      if (medicationData.length > 0) {
-        await addMultipleMedications(user.id, medicationData);
+      // Use the processed medications data
+      if (extractedMedications.length > 0) {
+        await addMultipleMedications(user.id, extractedMedications);
         toast.success("Medications added to your dashboard!");
         setMedicationAdded(true);
       } else {
-        toast.error("No valid medication data extracted");
+        // Fallback to processing the AI result again
+        const medicationData = await processAIMedicationData(aiResult);
+        
+        if (medicationData.length > 0) {
+          await addMultipleMedications(user.id, medicationData);
+          toast.success("Medications added to your dashboard!");
+          setMedicationAdded(true);
+        } else {
+          toast.error("No valid medication data extracted");
+        }
       }
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
@@ -284,16 +312,21 @@ export default function ScanPage() {
                       </div>
                     )}
                     
-                    {aiResult && (
+                    {extractedMedications.length > 0 && (
                       <div className="p-3 rounded border bg-blue-50 border-blue-200 mt-2">
-                        <div className="font-semibold mb-1">AI Medication Info:</div>
-                        <pre className="whitespace-pre-wrap text-xs">
-                          {JSON.stringify(aiResult, null, 2)}
-                        </pre>
+                        <div className="font-semibold mb-2">Extracted Medications:</div>
+                        {extractedMedications.map((med, index) => (
+                          <div key={index} className="mb-2 p-2 bg-white rounded border border-blue-100">
+                            <p className="font-medium">{med.name} - {med.dosage}</p>
+                            <p className="text-xs text-gray-600">
+                              {med.frequency}, {med.instructions ? med.instructions : 'No special instructions'}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     )}
                     
-                    {aiResult && !medicationAdded && (
+                    {(extractedMedications.length > 0 || aiResult) && !medicationAdded && (
                       <Button 
                         className="w-full bg-green-600 hover:bg-green-700"
                         onClick={handleAddMedication}

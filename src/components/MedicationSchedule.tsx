@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,12 +46,8 @@ export default function MedicationSchedule({
   
   // Get timing display
   const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
-    // Define time ranges for each period
-    const hour = parseInt(medication.time.split(':')[0], 10);
-    
-    // Check if medication should be taken during this period based on notes
-    const note = medication.notes || "";
-    const dosingPatternMatch = note.match(/Dosing pattern: (\d\+\d\+\d)/);
+    // Parse dosing pattern from notes
+    const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d\+\d\+\d)/);
     
     if (dosingPatternMatch) {
       const dosingPattern = dosingPatternMatch[1];
@@ -62,24 +57,20 @@ export default function MedicationSchedule({
       const shouldTakeAfternoon = afternoon > 0 && period === 'afternoon';
       const shouldTakeEvening = evening > 0 && period === 'evening';
       
-      if (!shouldTakeMorning && !shouldTakeAfternoon && !shouldTakeEvening) {
-        return "-";
+      // Get the appropriate time for this period
+      let timeDisplay = "";
+      if (period === 'morning' && shouldTakeMorning) {
+        timeDisplay = "08:00";
+      } else if (period === 'afternoon' && shouldTakeAfternoon) {
+        timeDisplay = "14:00";
+      } else if (period === 'evening' && shouldTakeEvening) {
+        timeDisplay = "20:00";
       }
       
-      // If should take during this period, show time with timing if available
+      // If should take during this period, show check mark and time
       if ((period === 'morning' && shouldTakeMorning) || 
           (period === 'afternoon' && shouldTakeAfternoon) || 
           (period === 'evening' && shouldTakeEvening)) {
-        
-        // Determine time based on period
-        let timeDisplay = medication.time;
-        if (period === 'morning') {
-          timeDisplay = "08:00";
-        } else if (period === 'afternoon') {
-          timeDisplay = "14:00";
-        } else if (period === 'evening') {
-          timeDisplay = "20:00";
-        }
         
         const timingText = medication.timing ? 
           medication.timing.replace('_', ' ') : '';
@@ -87,8 +78,10 @@ export default function MedicationSchedule({
         return (
           <div className="flex flex-col items-start">
             <div className="flex items-center">
-              <AlarmClock className="h-3 w-3 mr-1 text-medsnap-blue" />
-              <span>{timeDisplay}</span>
+              <Check className="h-4 w-4 mr-1 text-green-500" />
+              {timeDisplay && (
+                <span className="text-gray-600 text-sm ml-1">{timeDisplay}</span>
+              )}
             </div>
             {medication.timing && (
               <Badge variant="outline" className="mt-1 text-xs">
@@ -103,6 +96,7 @@ export default function MedicationSchedule({
     }
     
     // Fallback to time-based check if no dosing pattern
+    const hour = parseInt(medication.time.split(':')[0], 10);
     const isMorning = hour >= 5 && hour < 12;
     const isAfternoon = hour >= 12 && hour < 17;
     const isEvening = hour >= 17 || hour < 5;

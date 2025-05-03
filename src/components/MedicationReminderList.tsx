@@ -1,20 +1,20 @@
 
 import { useState } from "react";
-import { Bell, CheckCircle, Clock } from "lucide-react";
+import { Bell, CheckCircle, Clock, CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReminders, MedicationReminder } from "@/hooks/useReminders";
 import { useMedications } from "@/hooks/useMedications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 export function MedicationReminderList() {
   const { reminders, loading: remindersLoading, updateReminder, deleteReminder, addReminder } = useReminders();
   const { medications } = useMedications();
   const [isAddingReminder, setIsAddingReminder] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState("");
-  const [reminderTime, setReminderTime] = useState("08:00");
+  const [reminderTime, setReminderTime] = useState("");
 
   // Map medication IDs to medication names
   const medicationMap = medications.reduce((acc, med) => {
@@ -28,6 +28,11 @@ export function MedicationReminderList() {
       return;
     }
 
+    if (!reminderTime) {
+      toast.error("Please enter a reminder time");
+      return;
+    }
+
     setIsAddingReminder(true);
 
     try {
@@ -35,7 +40,7 @@ export function MedicationReminderList() {
       if (success) {
         toast.success("Reminder added successfully");
         setSelectedMedication("");
-        setReminderTime("08:00");
+        setReminderTime("");
       }
     } catch (error) {
       console.error("Error adding reminder:", error);
@@ -58,6 +63,21 @@ export function MedicationReminderList() {
     } catch (error) {
       console.error("Error deleting reminder:", error);
     }
+  };
+
+  // Get dosing pattern indicators
+  const getDosingPattern = (medicationId: string) => {
+    const medication = medications.find(med => med.id === medicationId);
+    if (!medication || !medication.notes) return [false, false, false];
+    
+    const match = medication.notes.match(/Dosing pattern: (\d)\+(\d)\+(\d)/);
+    if (!match) return [false, false, false];
+    
+    return [
+      match[1] !== "0",
+      match[2] !== "0", 
+      match[3] !== "0"
+    ];
   };
 
   return (
@@ -111,6 +131,7 @@ export function MedicationReminderList() {
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-medsnap-blue focus:ring focus:ring-medsnap-blue focus:ring-opacity-50 bg-white p-2 text-sm border"
                   value={reminderTime}
                   onChange={(e) => setReminderTime(e.target.value)}
+                  placeholder="Enter reminder time"
                 />
               </div>
             </div>
@@ -119,7 +140,7 @@ export function MedicationReminderList() {
               variant="outline" 
               className="w-full mt-2"
               onClick={handleAddReminder}
-              disabled={isAddingReminder || !selectedMedication}
+              disabled={isAddingReminder || !selectedMedication || !reminderTime}
             >
               {isAddingReminder ? "Adding..." : "Add Reminder"}
             </Button>
@@ -130,37 +151,54 @@ export function MedicationReminderList() {
                 <p className="text-sm text-gray-500">No reminders set</p>
               ) : (
                 <div className="divide-y">
-                  {reminders.map((reminder) => (
-                    <div key={reminder.id} className="py-3 flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">
-                          {medicationMap[reminder.medication_id] || "Unknown medication"}
-                        </p>
-                        <p className="text-sm text-gray-500 flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {reminder.reminder_time}
-                        </p>
+                  {reminders.map((reminder) => {
+                    const [morningDose, afternoonDose, eveningDose] = getDosingPattern(reminder.medication_id);
+                    
+                    return (
+                      <div key={reminder.id} className="py-3 flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">
+                            {medicationMap[reminder.medication_id] || "Unknown medication"}
+                          </p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <p className="text-sm text-gray-500 flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {reminder.reminder_time}
+                            </p>
+                            <div className="flex space-x-1">
+                              <Badge variant={morningDose ? "default" : "outline"} className={morningDose ? "bg-blue-100 text-blue-800 border-blue-200" : "text-gray-500"}>
+                                {morningDose && <CheckIcon className="h-2 w-2 mr-1" />}M
+                              </Badge>
+                              <Badge variant={afternoonDose ? "default" : "outline"} className={afternoonDose ? "bg-amber-100 text-amber-800 border-amber-200" : "text-gray-500"}>
+                                {afternoonDose && <CheckIcon className="h-2 w-2 mr-1" />}A
+                              </Badge>
+                              <Badge variant={eveningDose ? "default" : "outline"} className={eveningDose ? "bg-indigo-100 text-indigo-800 border-indigo-200" : "text-gray-500"}>
+                                {eveningDose && <CheckIcon className="h-2 w-2 mr-1" />}E
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={reminder.is_enabled ? "text-green-500" : "text-gray-400"}
+                            onClick={() => handleToggleReminder(reminder)}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500"
+                            onClick={() => handleDeleteReminder(reminder)}
+                          >
+                            &times;
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={reminder.is_enabled ? "text-green-500" : "text-gray-400"}
-                          onClick={() => handleToggleReminder(reminder)}
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500"
-                          onClick={() => handleDeleteReminder(reminder)}
-                        >
-                          &times;
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

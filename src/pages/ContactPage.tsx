@@ -46,7 +46,7 @@ export default function ContactPage() {
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Contact Us</h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Have a question or feedback? We'd love to hear from you!
+          Have a question or feedback about MediSnap? We'd love to hear from you!
         </p>
       </div>
       
@@ -64,10 +64,10 @@ export default function ContactPage() {
             </CardHeader>
             <CardContent>
               <a 
-                href="mailto:support@nutrisnap.app"
+                href="mailto:info@ailifestyle.tech"
                 className="text-green-600 hover:text-green-700 dark:text-green-400"
               >
-                support@nutrisnap.app
+                info@ailifestyle.tech
               </a>
             </CardContent>
           </Card>
@@ -83,7 +83,7 @@ export default function ContactPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p>+1 (555) 123-4567</p>
+              <p>+8801754459594</p>
             </CardContent>
           </Card>
           
@@ -99,9 +99,10 @@ export default function ContactPage() {
             </CardHeader>
             <CardContent>
               <address className="not-italic">
-                123 Health Street<br />
-                Suite 456<br />
-                San Francisco, CA 94107
+                Flat A-1 & A-2, House No. 4,<br />
+                Road No. 1, Chanduddan Avenue,<br />
+                Mohammadpur, Dhaka - 1207,<br />
+                Bangladesh
               </address>
             </CardContent>
           </Card>
@@ -152,7 +153,7 @@ export default function ContactPage() {
                     id="message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="How can we help you?"
+                    placeholder="How can we help you with MediSnap?"
                     rows={5}
                     required
                   />

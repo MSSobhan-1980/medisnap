@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,8 +20,12 @@ import DataPrivacyPage from "@/pages/DataPrivacyPage";
 import CookieConsent from "@/components/privacy/CookieConsent";
 import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
 import TermsOfServicePage from "@/pages/legal/TermsOfServicePage";
+import TermsOfUsePage from "@/pages/legal/TermsOfUsePage";
 import CookiePolicyPage from "@/pages/legal/CookiePolicyPage";
 import ContactPage from "@/pages/ContactPage";
+import SupportPage from "@/pages/SupportPage";
+import AboutUsPage from "@/pages/AboutUsPage";
+import FAQPage from "@/pages/FAQPage";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { AILifestyleAuthVerifier } from "@/components/auth/AILifestyleAuthVerifier";
 
@@ -95,11 +98,15 @@ const AppRoutes = () => (
       </ProtectedRoute>
     } />
     
-    {/* Legal pages - public */}
+    {/* Legal and information pages - public */}
     <Route path="/privacy-policy" element={<Layout><PrivacyPolicyPage /></Layout>} />
     <Route path="/terms-of-service" element={<Layout><TermsOfServicePage /></Layout>} />
+    <Route path="/terms-of-use" element={<Layout><TermsOfUsePage /></Layout>} />
     <Route path="/cookie-policy" element={<Layout><CookiePolicyPage /></Layout>} />
     <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
+    <Route path="/support" element={<Layout><SupportPage /></Layout>} />
+    <Route path="/about" element={<Layout><AboutUsPage /></Layout>} />
+    <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
     
     {/* Special routes */}
     <Route path="/unauthorized" element={<UnauthorizedPage />} />

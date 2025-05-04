@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 
 interface FooterProps {
@@ -27,11 +28,17 @@ export default function Footer({ isLanding = false }: FooterProps) {
               <Link to="/auth" className="text-gray-600 hover:text-blue-500 text-sm">
                 Sign In
               </Link>
+              <Link to="/about" className="text-gray-600 hover:text-blue-500 text-sm">
+                About Us
+              </Link>
+              <Link to="/faq" className="text-gray-600 hover:text-blue-500 text-sm">
+                FAQs
+              </Link>
               <Link to="/privacy-policy" className="text-gray-600 hover:text-blue-500 text-sm">
                 Privacy Policy
               </Link>
-              <Link to="/terms" className="text-gray-600 hover:text-blue-500 text-sm">
-                Terms of Service
+              <Link to="/terms-of-use" className="text-gray-600 hover:text-blue-500 text-sm">
+                Terms of Use
               </Link>
             </div>
           </div>
@@ -39,6 +46,12 @@ export default function Footer({ isLanding = false }: FooterProps) {
           <div className="border-t border-gray-200 mt-8 pt-6 text-center">
             <p className="text-gray-500 text-sm">
               © {currentYear} MediSnap. All rights reserved.
+            </p>
+            <p className="text-gray-500 text-sm mt-2">
+              Flat A-1 & A-2, House No. 4, Road No. 1, Chanduddan Avenue, Mohammadpur, Dhaka - 1207, Bangladesh
+            </p>
+            <p className="text-gray-500 text-sm mt-1">
+              <a href="mailto:info@ailifestyle.tech" className="hover:text-blue-500">info@ailifestyle.tech</a>
             </p>
           </div>
         </div>
@@ -55,6 +68,9 @@ export default function Footer({ isLanding = false }: FooterProps) {
             <p className="text-gray-600 text-sm">
               AI-powered medication organizer that simplifies your healthcare management
               with smart scheduling, reminders, and health reporting.
+            </p>
+            <p className="text-gray-600 text-sm mt-2">
+              <a href="mailto:info@ailifestyle.tech" className="hover:text-blue-500">info@ailifestyle.tech</a>
             </p>
           </div>
 
@@ -85,7 +101,7 @@ export default function Footer({ isLanding = false }: FooterProps) {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-gray-800">Resources</h4>
+            <h4 className="font-semibold mb-4 text-gray-800">Company</h4>
             <ul className="space-y-2">
               <li>
                 <Link to="/about" className="text-gray-600 hover:text-blue-500 text-sm">
@@ -98,30 +114,40 @@ export default function Footer({ isLanding = false }: FooterProps) {
                 </Link>
               </li>
               <li>
-                <Link to="/privacy-policy" className="text-gray-600 hover:text-blue-500 text-sm">
-                  Privacy Policy
+                <Link to="/support" className="text-gray-600 hover:text-blue-500 text-sm">
+                  Support
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="text-gray-600 hover:text-blue-500 text-sm">
-                  Terms of Use
+                <Link to="/contact" className="text-gray-600 hover:text-blue-500 text-sm">
+                  Contact
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-gray-800">Contact</h4>
+            <h4 className="font-semibold mb-4 text-gray-800">Legal</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/support" className="text-gray-600 hover:text-blue-500 text-sm">
-                  Support
+                <Link to="/privacy-policy" className="text-gray-600 hover:text-blue-500 text-sm">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
-                <a href="mailto:help@medsnap.com" className="text-gray-600 hover:text-blue-500 text-sm">
-                  help@medsnap.com
-                </a>
+                <Link to="/terms-of-use" className="text-gray-600 hover:text-blue-500 text-sm">
+                  Terms of Use
+                </Link>
+              </li>
+              <li>
+                <Link to="/cookie-policy" className="text-gray-600 hover:text-blue-500 text-sm">
+                  Cookie Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/data-privacy" className="text-gray-600 hover:text-blue-500 text-sm">
+                  Data Privacy
+                </Link>
               </li>
             </ul>
           </div>
@@ -130,6 +156,9 @@ export default function Footer({ isLanding = false }: FooterProps) {
         <div className="border-t border-gray-200 mt-8 pt-6 text-center">
           <p className="text-gray-500 text-sm">
             © {currentYear} MediSnap. All rights reserved.
+          </p>
+          <p className="text-gray-500 text-sm mt-2">
+            Flat A-1 & A-2, House No. 4, Road No. 1, Chanduddan Avenue, Mohammadpur, Dhaka - 1207, Bangladesh
           </p>
         </div>
       </div>

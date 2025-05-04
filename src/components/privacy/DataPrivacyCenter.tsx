@@ -53,15 +53,24 @@ export default function DataPrivacyCenter() {
       
       // Fetch meal detection data if table exists
       try {
-        const mealResult = await supabase.rpc('get_user_meal_detections', { user_uuid: user.id });
-        if (!mealResult.error) {
-          userData.meals = mealResult.data || [];
-        } else {
-          // Fallback method if RPC doesn't exist - using any to bypass type checking
+        // First try RPC function
+        try {
+          const mealResult = await supabase.rpc('get_user_meal_detections', { 
+            user_uuid: user.id 
+          });
+          
+          if (!mealResult.error && mealResult.data) {
+            userData.meals = mealResult.data;
+          } else {
+            throw new Error('RPC method failed');
+          }
+        } catch (error) {
+          console.log('Fallback to direct query for meal_detections');
+          // Fallback method if RPC doesn't exist - using type assertion
           const directResult = await (supabase
             .from('meal_detections' as any)
             .select('*')
-            .eq('user_id', user.id)) as any;
+            .eq('user_id', user.id));
             
           if (directResult.data) {
             userData.meals = directResult.data;
@@ -130,25 +139,27 @@ export default function DataPrivacyCenter() {
     try {
       toast.loading("Deleting your account and data...");
       
-      // Delete user data from various tables using a safer approach
-      const tables = ['medications', 'medication_reminders', 'profiles'];
-      
-      // Try to delete from meal_detections if exists using RPC
+      // Delete meal detections using RPC if available
       try {
-        await supabase.rpc('delete_user_meal_detections', { user_uuid: user.id });
+        await supabase.rpc('delete_user_meal_detections', { 
+          user_uuid: user.id 
+        });
       } catch (error) {
+        console.error("RPC delete_user_meal_detections failed:", error);
         // Fallback if RPC doesn't exist
         try {
           await (supabase
             .from('meal_detections' as any)
             .delete()
-            .eq('user_id', user.id)) as any;
+            .eq('user_id', user.id));
         } catch (innerError) {
           console.error("Could not delete meal_detections:", innerError);
         }
       }
       
       // Delete from standard tables
+      const tables = ['medications', 'medication_reminders', 'profiles'];
+      
       for (const table of tables) {
         try {
           await supabase.from(table).delete().eq('user_id', user.id);

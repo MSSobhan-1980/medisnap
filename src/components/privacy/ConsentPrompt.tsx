@@ -59,19 +59,27 @@ export default function ConsentPrompt({
         granted_at: new Date().toISOString()
       }));
       
-      // Use raw insert to bypass type checking
-      const { error } = await supabase.rpc('insert_user_consents', { 
-        consent_data: JSON.stringify(consentRecords) 
-      });
-      
-      if (error) {
+      // First try using RPC function
+      try {
+        const { error } = await supabase.rpc('insert_user_consents', { 
+          consent_data: JSON.stringify(consentRecords) 
+        });
+        
+        if (error) throw error;
+      } catch (error) {
         console.error('Error saving consent using RPC:', error);
-        // Fallback to direct REST API with any type assertion
-        const { error: insertError } = await supabase
-          .from('user_consents' as any)
-          .insert(consentRecords as any);
-          
-        if (insertError) throw insertError;
+        
+        // Fallback to direct insert with type assertion
+        try {
+          const { error: insertError } = await (supabase
+            .from('user_consents' as any)
+            .insert(consentRecords as any));
+            
+          if (insertError) throw insertError;
+        } catch (innerError) {
+          console.error('Error with fallback insert:', innerError);
+          throw new Error('Failed to save consent');
+        }
       }
       
       toast.success('Consent preferences saved');

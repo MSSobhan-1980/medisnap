@@ -25,13 +25,20 @@ export function useAuthorization() {
         
         // Fetch user roles using safer approach with RPC
         try {
-          const { data: rolesData, error: rolesError } = await supabase.rpc('get_user_roles', { user_uuid: user.id });
+          const { data: rolesData, error: rolesError } = await supabase.rpc('get_user_roles', { 
+            user_uuid: user.id 
+          });
           
           if (!rolesError && rolesData) {
             const userRoles = rolesData.map((r: any) => r.role as Role);
             setRoles(userRoles.length ? userRoles : ['user']);
           } else {
-            // Fallback to direct query if RPC is not available
+            throw new Error('RPC not available');
+          }
+        } catch (error) {
+          console.error('RPC get_user_roles failed, trying direct query:', error);
+          // Fallback to direct query if RPC is not available
+          try {
             const { data, error } = await (supabase as any)
               .from('user_roles')
               .select('role')
@@ -41,16 +48,18 @@ export function useAuthorization() {
             
             const userRoles = data?.map((r: any) => r.role as Role) || ['user'];
             setRoles(userRoles);
+          } catch (innerError) {
+            console.error('Error in fallback roles query:', innerError);
+            setRoles(['user']); // Default to user role on error
           }
-        } catch (error) {
-          console.error('Error fetching roles:', error);
-          setRoles(['user']); // Default to user role on error
         }
         
         // If user role includes caregiver, fetch dependents using safer approach
         if (roles.includes('caregiver')) {
           try {
-            const { data: dependentsData, error: dependentsError } = await supabase.rpc('get_caregiver_dependents', { caregiver_uuid: user.id });
+            const { data: dependentsData, error: dependentsError } = await supabase.rpc('get_caregiver_dependents', { 
+              caregiver_uuid: user.id 
+            });
             
             if (!dependentsError && dependentsData) {
               setDependents(dependentsData.map((d: any) => ({
@@ -58,34 +67,34 @@ export function useAuthorization() {
                 name: d.full_name || 'Unknown'
               })));
             } else {
-              // Fallback to direct query
-              try {
-                const { data, error } = await (supabase as any)
-                  .from('caregiver_relationships')
-                  .select(`
-                    dependent_id,
-                    profiles!caregiver_relationships_dependent_id_fkey (
-                      full_name
-                    )
-                  `)
-                  .eq('caregiver_id', user.id);
-                  
-                if (error) throw error;
-                
-                setDependents(
-                  data?.map((d: any) => ({
-                    id: d.dependent_id,
-                    name: d.profiles?.full_name || 'Unknown'
-                  })) || []
-                );
-              } catch (innerError) {
-                console.error('Error in fallback dependent query:', innerError);
-                setDependents([]);
-              }
+              throw new Error('RPC not available');
             }
           } catch (error) {
-            console.error('Error fetching dependents:', error);
-            setDependents([]);
+            console.error('RPC get_caregiver_dependents failed, trying direct query:', error);
+            // Fallback to direct query
+            try {
+              const { data, error } = await (supabase as any)
+                .from('caregiver_relationships')
+                .select(`
+                  dependent_id,
+                  profiles!caregiver_relationships_dependent_id_fkey (
+                    full_name
+                  )
+                `)
+                .eq('caregiver_id', user.id);
+                
+              if (error) throw error;
+              
+              setDependents(
+                data?.map((d: any) => ({
+                  id: d.dependent_id,
+                  name: d.profiles?.full_name || 'Unknown'
+                })) || []
+              );
+            } catch (innerError) {
+              console.error('Error in fallback dependent query:', innerError);
+              setDependents([]);
+            }
           }
         }
       } catch (error) {

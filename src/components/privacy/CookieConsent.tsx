@@ -54,8 +54,8 @@ export default function CookieConsent() {
     localStorage.setItem('cookie-consent', JSON.stringify(consentSettings));
     
     // Set cookies based on preferences
-    if (consentSettings.analytics) {
-      window.LogRocket?.init('nutrisnap/app');
+    if (consentSettings.analytics && typeof window.LogRocket !== 'undefined') {
+      window.LogRocket.init('nutrisnap/app');
     }
     
     // Hide banner
@@ -157,4 +157,11 @@ export default function CookieConsent() {
       </div>
     </div>
   );
+}
+
+// Add global type declaration for LogRocket to fix TypeScript error
+declare global {
+  interface Window {
+    LogRocket?: any;
+  }
 }

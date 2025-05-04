@@ -16,16 +16,13 @@ import ProfileSetupPage from "@/pages/ProfileSetupPage";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "@/hooks/useAuth";
 import AuthPage from "@/pages/AuthPage";
-import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
-import TermsOfServicePage from "@/pages/legal/TermsOfServicePage";
-import CookiePolicyPage from "@/pages/legal/CookiePolicyPage";
-import ContactPage from "@/pages/ContactPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import DataPrivacyPage from "@/pages/DataPrivacyPage";
 import CookieConsent from "@/components/privacy/CookieConsent";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import LogRocket from "logrocket";
 import { AILifestyleAuthVerifier } from "@/components/auth/AILifestyleAuthVerifier";
+// Import LogRocket dynamically since it's only used in production
+import LogRocket from "logrocket";
 
 // Initialize LogRocket only in production
 if (import.meta.env.PROD) {

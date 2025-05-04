@@ -47,6 +47,7 @@ export function useReminders(family_member_id?: string | null) {
         
         if (fetchError) throw fetchError;
         
+        console.log("Fetched reminders:", data);
         setReminders(data || []);
         setError(null);
       } catch (err: any) {
@@ -61,6 +62,12 @@ export function useReminders(family_member_id?: string | null) {
     fetchReminders();
     
     // Set up real-time subscription for reminders
+    const filter = memberId 
+      ? `user_id=eq.${user.id}&family_member_id=eq.${memberId}`
+      : `user_id=eq.${user.id}&family_member_id=is.null`;
+    
+    console.log("Setting up reminders subscription with filter:", filter);
+    
     const channel = supabase
       .channel('reminders-changes')
       .on('postgres_changes', 
@@ -68,11 +75,10 @@ export function useReminders(family_member_id?: string | null) {
           event: '*',
           schema: 'public',
           table: 'medication_reminders',
-          filter: memberId 
-            ? `user_id=eq.${user.id}&family_member_id=eq.${memberId}`
-            : `user_id=eq.${user.id}&family_member_id=is.null`
+          filter
         }, 
-        async () => {
+        async (payload) => {
+          console.log("Reminder change detected:", payload);
           try {
             await fetchReminders();
           } catch (err) {
@@ -83,6 +89,7 @@ export function useReminders(family_member_id?: string | null) {
       .subscribe();
 
     return () => {
+      console.log("Cleaning up reminders subscription");
       supabase.removeChannel(channel);
     };
   }, [user, memberId]);
@@ -90,8 +97,10 @@ export function useReminders(family_member_id?: string | null) {
   const addReminder = async (medication_id: string, reminder_time: string): Promise<boolean> => {
     if (!user) return false;
     
+    console.log("Adding reminder:", { medication_id, reminder_time, user_id: user.id, family_member_id: memberId });
+    
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('medication_reminders')
         .insert({
           medication_id,
@@ -99,10 +108,12 @@ export function useReminders(family_member_id?: string | null) {
           family_member_id: memberId,
           reminder_time,
           is_enabled: true
-        });
+        })
+        .select();
       
       if (error) throw error;
       
+      console.log("Reminder added:", data);
       toast.success("Reminder set successfully");
       return true;
     } catch (err: any) {
@@ -115,6 +126,8 @@ export function useReminders(family_member_id?: string | null) {
   const updateReminder = async (id: string, data: Partial<Omit<MedicationReminder, 'id' | 'user_id' | 'created_at'>>): Promise<boolean> => {
     if (!user) return false;
     
+    console.log("Updating reminder:", { id, ...data });
+    
     try {
       const { error } = await supabase
         .from('medication_reminders')
@@ -124,6 +137,7 @@ export function useReminders(family_member_id?: string | null) {
       
       if (error) throw error;
       
+      console.log("Reminder updated successfully");
       toast.success("Reminder updated successfully");
       return true;
     } catch (err: any) {
@@ -136,6 +150,8 @@ export function useReminders(family_member_id?: string | null) {
   const deleteReminder = async (id: string): Promise<boolean> => {
     if (!user) return false;
     
+    console.log("Deleting reminder:", id);
+    
     try {
       const { error } = await supabase
         .from('medication_reminders')
@@ -145,6 +161,7 @@ export function useReminders(family_member_id?: string | null) {
       
       if (error) throw error;
       
+      console.log("Reminder deleted successfully");
       toast.success("Reminder deleted successfully");
       return true;
     } catch (err: any) {

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,17 +61,17 @@ export default function MedicationSchedule({
       // Get the appropriate time for this period
       let timeDisplay = "";
       if (period === 'morning' && shouldTakeMorning) {
-        timeDisplay = "08:00";
+        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Morning";
       } else if (period === 'afternoon' && shouldTakeAfternoon) {
-        timeDisplay = "14:00";
+        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Afternoon";
       } else if (period === 'evening' && shouldTakeEvening) {
-        timeDisplay = "20:00";
+        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Evening";
       }
       
       // If should take during this period, show check mark and time
-      if ((period === 'morning' && shouldTakeMorning) || 
-          (period === 'afternoon' && shouldTakeAfternoon) || 
-          (period === 'evening' && shouldTakeEvening)) {
+      if (shouldTakeMorning && period === 'morning' || 
+          shouldTakeAfternoon && period === 'afternoon' || 
+          shouldTakeEvening && period === 'evening') {
         
         const timingText = medication.timing ? 
           medication.timing.replace('_', ' ') : '';
@@ -96,6 +97,8 @@ export default function MedicationSchedule({
     }
     
     // Fallback to time-based check if no dosing pattern
+    if (!medication.time) return "-";
+    
     const hour = parseInt(medication.time.split(':')[0], 10);
     const isMorning = hour >= 5 && hour < 12;
     const isAfternoon = hour >= 12 && hour < 17;
@@ -245,7 +248,7 @@ export default function MedicationSchedule({
                     </TableHeader>
                     <TableBody>
                       {medications
-                        .sort((a, b) => a.time.localeCompare(b.time))
+                        .sort((a, b) => a.time?.localeCompare(b.time || "") || 0)
                         .map((med, index) => (
                           <TableRow key={med.id}>
                             <TableCell className="font-medium">

@@ -163,7 +163,7 @@ export function MedicationReminderList() {
                           <div className="flex items-center space-x-2 mt-1">
                             <p className="text-sm text-gray-500 flex items-center">
                               <Clock className="h-3 w-3 mr-1" />
-                              {reminder.reminder_time}
+                              {reminder.reminder_time || "No set time"}
                             </p>
                             <div className="flex space-x-1">
                               <Badge variant={morningDose ? "default" : "outline"} className={morningDose ? "bg-blue-100 text-blue-800 border-blue-200" : "text-gray-500"}>

@@ -100,6 +100,8 @@ export async function addMedication(userId: string, medicationData: MedicationFo
 
 export async function updateMedication(medicationId: string, medicationData: Partial<MedicationFormData>): Promise<Medication | null> {
   try {
+    console.log("Updating medication with data:", medicationData);
+    
     // Convert camelCase to snake_case for database
     const dbData: Record<string, any> = {};
     
@@ -129,6 +131,8 @@ export async function updateMedication(medicationId: string, medicationData: Par
     }
 
     if (!data) return null;
+
+    console.log("Updated medication data:", data);
 
     // Convert snake_case to camelCase for our frontend
     return {
@@ -189,11 +193,12 @@ export async function deleteMedication(medicationId: string): Promise<boolean> {
   }
 }
 
-// Add the missing functions required by ScanPage.tsx
+// Process AI medication data
 export async function processAIMedicationData(aiResult: any): Promise<MedicationFormData[]> {
   try {
+    console.log("Processing AI result:", aiResult);
+    
     // This function processes AI-extracted medication data
-    // Convert the AI result into proper medication form data
     let medications: MedicationFormData[] = [];
     let extractedData: any[] = [];
     
@@ -204,16 +209,18 @@ export async function processAIMedicationData(aiResult: any): Promise<Medication
       if (jsonMatch && jsonMatch[1]) {
         try {
           extractedData = JSON.parse(jsonMatch[1]);
+          console.log("Extracted JSON data:", extractedData);
         } catch (e) {
           console.error("Error parsing JSON from OCR result:", e);
         }
       }
-    } else if (aiResult.raw && typeof aiResult.raw === 'string') {
+    } else if (aiResult?.raw && typeof aiResult.raw === 'string') {
       // Try to extract JSON from the raw property
       const jsonMatch = aiResult.raw.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch && jsonMatch[1]) {
         try {
           extractedData = JSON.parse(jsonMatch[1]);
+          console.log("Extracted JSON data from raw:", extractedData);
         } catch (e) {
           console.error("Error parsing JSON from aiResult.raw:", e);
         }
@@ -230,6 +237,8 @@ export async function processAIMedicationData(aiResult: any): Promise<Medication
       }
     }
     
+    console.log("Final extracted data:", extractedData);
+    
     if (extractedData && extractedData.length > 0) {
       medications = extractedData.map((med: any) => {
         // Map dosing pattern to frequency
@@ -244,10 +253,17 @@ export async function processAIMedicationData(aiResult: any): Promise<Medication
         else if (dosingPattern === "0+1+1") frequency = "twice-daily";
         else if (dosingPattern === "1+1+1") frequency = "three-times-daily";
         
-        // Determine default time based on dosing pattern
-        let defaultTime = "08:00";
-        if (dosingPattern === "0+1+0") defaultTime = "13:00";
+        // Determine appropriate time based on dosing pattern
+        let defaultTime = "";
+        if (dosingPattern === "1+0+0") defaultTime = "08:00";
+        else if (dosingPattern === "0+1+0") defaultTime = "13:00";
         else if (dosingPattern === "0+0+1") defaultTime = "20:00";
+        else if (dosingPattern.includes("1")) {
+          // Default to the first dosage time of the day
+          if (dosingPattern[0] === "1") defaultTime = "08:00";
+          else if (dosingPattern[2] === "1") defaultTime = "13:00";
+          else if (dosingPattern[4] === "1") defaultTime = "20:00";
+        }
         
         return {
           name: med.medication_name || "",
@@ -263,6 +279,7 @@ export async function processAIMedicationData(aiResult: any): Promise<Medication
       });
     }
     
+    console.log("Processed medications:", medications);
     return medications.filter(med => med.name.trim() !== ""); // Filter out medications without names
   } catch (error) {
     console.error("Error processing AI medication data:", error);
@@ -272,6 +289,8 @@ export async function processAIMedicationData(aiResult: any): Promise<Medication
 
 export async function addMultipleMedications(userId: string, medicationsData: MedicationFormData[], familyMemberId?: string | null): Promise<Medication[]> {
   try {
+    console.log("Adding multiple medications:", medicationsData);
+    
     // Convert the array of medication data to the database format
     const dbMedications = medicationsData.map(med => ({
       user_id: userId,
@@ -298,6 +317,8 @@ export async function addMultipleMedications(userId: string, medicationsData: Me
       console.error("Error adding multiple medications:", error);
       throw error;
     }
+
+    console.log("Successfully added medications:", data);
 
     // Convert the response data to our application format
     return data.map(med => ({

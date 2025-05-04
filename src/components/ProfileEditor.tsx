@@ -33,19 +33,24 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
 
     setIsUploading(true);
     try {
-      // Create avatars bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets?.find(b => b.name === 'avatars')) {
+      // Check if avatars bucket exists
+      const { data: bucketList } = await supabase.storage.listBuckets();
+      const bucketExists = bucketList?.some(bucket => bucket.name === 'avatars');
+      
+      // Create bucket if it doesn't exist
+      if (!bucketExists) {
         await supabase.storage.createBucket('avatars', {
-          public: true
+          public: true,
+          fileSizeLimit: 1024 * 1024 * 2 // 2MB limit
         });
+        console.log("Created avatars bucket");
       }
       
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
+      const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
 
       // Upload file to Supabase storage
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { upsert: true });
 
@@ -59,6 +64,7 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
       setAvatarUrl(publicUrl);
       toast.success("Profile picture uploaded successfully!");
     } catch (error: any) {
+      console.error("Error uploading profile picture:", error);
       toast.error("Error uploading profile picture", { description: error.message });
     } finally {
       setIsUploading(false);

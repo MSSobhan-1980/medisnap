@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Upload } from "lucide-react";
+import { processImageForUpload } from "@/utils/security/imageProcessing";
+import { fileUploadLimiter, withRateLimiting } from "@/utils/security/rateLimiting";
 
 export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
   const { user, profile } = useAuth();
@@ -17,6 +19,7 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update state when profile data changes
   useEffect(() => {
@@ -33,41 +36,59 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
 
     setIsUploading(true);
     try {
-      // Check if avatars bucket exists
-      const { data: bucketList } = await supabase.storage.listBuckets();
-      const bucketExists = bucketList?.some(bucket => bucket.name === 'avatars');
-      
-      // Create bucket if it doesn't exist
-      if (!bucketExists) {
-        await supabase.storage.createBucket('avatars', {
-          public: true,
-          fileSizeLimit: 1024 * 1024 * 2 // 2MB limit
-        });
-        console.log("Created avatars bucket");
-      }
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
+      // Use rate limiting for uploads
+      await withRateLimiting(
+        fileUploadLimiter,
+        async () => {
+          // Process image (validate, compress, strip EXIF data)
+          const processedFile = await processImageForUpload(file);
+          if (!processedFile) {
+            setIsUploading(false);
+            return; // Validation failed
+          }
 
-      // Upload file to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
+          // Check if avatars bucket exists
+          const { data: bucketList } = await supabase.storage.listBuckets();
+          const bucketExists = bucketList?.some(bucket => bucket.name === 'avatars');
+          
+          // Create bucket if it doesn't exist
+          if (!bucketExists) {
+            await supabase.storage.createBucket('avatars', {
+              public: true,
+              fileSizeLimit: 1024 * 1024 * 2 // 2MB limit
+            });
+            console.log("Created avatars bucket");
+          }
+          
+          const fileExt = processedFile.name.split('.').pop();
+          const fileName = `${user.id}/avatar_${Date.now()}.${fileExt}`;
 
-      if (uploadError) throw uploadError;
+          // Upload file to Supabase storage
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, processedFile, { upsert: true });
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
+          if (uploadError) throw uploadError;
 
-      setAvatarUrl(publicUrl);
-      toast.success("Profile picture uploaded successfully!");
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+
+          setAvatarUrl(publicUrl);
+          toast.success("Profile picture uploaded successfully!");
+        },
+        "Too many upload requests. Please try again in a moment."
+      );
     } catch (error: any) {
       console.error("Error uploading profile picture:", error);
       toast.error("Error uploading profile picture", { description: error.message });
     } finally {
       setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -77,11 +98,23 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
 
     setIsSaving(true);
     try {
+      // Validate inputs
+      if (fullName.trim() === "") {
+        toast.error("Please enter your name");
+        return;
+      }
+
+      // Check username format if provided
+      if (username && !/^[a-z0-9_\.]+$/.test(username)) {
+        toast.error("Username can only contain lowercase letters, numbers, periods and underscores");
+        return;
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({
-          full_name: fullName,
-          username,
+          full_name: fullName.trim(),
+          username: username.toLowerCase(),
           avatar_url: avatarUrl,
         })
         .eq("id", user.id);
@@ -130,9 +163,10 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
               <Input
                 type="file"
                 onChange={handleAvatarUpload}
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className="hidden"
                 id="avatar-upload"
+                ref={fileInputRef}
                 disabled={isUploading}
               />
               <Button
@@ -154,6 +188,8 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
               value={fullName} 
               onChange={(e) => setFullName(e.target.value)} 
               placeholder="Your full name"
+              maxLength={50}
+              required
             />
           </div>
           
@@ -164,6 +200,9 @@ export default function ProfileEditor({ onSave }: { onSave?: () => void }) {
               value={username} 
               onChange={(e) => setUsername(e.target.value)} 
               placeholder="Choose a username"
+              pattern="^[a-z0-9_\.]+$"
+              title="Username can only contain lowercase letters, numbers, periods and underscores"
+              maxLength={30}
             />
           </div>
           

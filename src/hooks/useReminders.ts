@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { apiRequestLimiter, withRateLimiting } from '@/utils/security/rateLimiting';
 
 export interface MedicationReminder {
   id: string;
@@ -15,15 +16,18 @@ export interface MedicationReminder {
 }
 
 export function useReminders(family_member_id?: string | null) {
-  const { user, activeMember } = useAuth();
+  const { user, activeMember, aiLifestyleUserId } = useAuth();
   const [reminders, setReminders] = useState<MedicationReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const memberId = family_member_id || activeMember?.id;
+  
+  // Get the effective user ID (either from Supabase auth or AILifestyle)
+  const effectiveUserId = user?.id || aiLifestyleUserId;
 
   useEffect(() => {
-    if (!user) {
+    if (!effectiveUserId) {
       setReminders([]);
       setLoading(false);
       return;
@@ -32,24 +36,31 @@ export function useReminders(family_member_id?: string | null) {
     const fetchReminders = async () => {
       setLoading(true);
       try {
-        let query = supabase
-          .from('medication_reminders')
-          .select('*')
-          .eq('user_id', user.id);
-        
-        if (memberId) {
-          query = query.eq('family_member_id', memberId);
-        } else {
-          query = query.is('family_member_id', null);
-        }
-          
-        const { data, error: fetchError } = await query.order('reminder_time', { ascending: true });
-        
-        if (fetchError) throw fetchError;
-        
-        console.log("Fetched reminders:", data);
-        setReminders(data || []);
-        setError(null);
+        // Use rate limiting for API requests
+        await withRateLimiting(
+          apiRequestLimiter,
+          async () => {
+            let query = supabase
+              .from('medication_reminders')
+              .select('*')
+              .eq('user_id', effectiveUserId);
+            
+            if (memberId) {
+              query = query.eq('family_member_id', memberId);
+            } else {
+              query = query.is('family_member_id', null);
+            }
+              
+            const { data, error: fetchError } = await query.order('reminder_time', { ascending: true });
+            
+            if (fetchError) throw fetchError;
+            
+            console.log("Fetched reminders:", data);
+            setReminders(data || []);
+            setError(null);
+          },
+          "Too many API requests. Please try again in a moment."
+        );
       } catch (err: any) {
         console.error("Error fetching reminders:", err);
         setError(err.message || "Failed to fetch reminders");
@@ -63,8 +74,8 @@ export function useReminders(family_member_id?: string | null) {
     
     // Set up real-time subscription for reminders
     const filter = memberId 
-      ? `user_id=eq.${user.id}&family_member_id=eq.${memberId}`
-      : `user_id=eq.${user.id}&family_member_id=is.null`;
+      ? `user_id=eq.${effectiveUserId}&family_member_id=eq.${memberId}`
+      : `user_id=eq.${effectiveUserId}&family_member_id=is.null`;
     
     console.log("Setting up reminders subscription with filter:", filter);
     
@@ -80,7 +91,23 @@ export function useReminders(family_member_id?: string | null) {
         async (payload) => {
           console.log("Reminder change detected:", payload);
           try {
-            await fetchReminders();
+            // Fetch the updated data
+            let query = supabase
+              .from('medication_reminders')
+              .select('*')
+              .eq('user_id', effectiveUserId);
+            
+            if (memberId) {
+              query = query.eq('family_member_id', memberId);
+            } else {
+              query = query.is('family_member_id', null);
+            }
+              
+            const { data, error: fetchError } = await query.order('reminder_time', { ascending: true });
+            
+            if (fetchError) throw fetchError;
+            
+            setReminders(data || []);
           } catch (err) {
             console.error("Error refreshing reminders after change:", err);
           }
@@ -92,30 +119,37 @@ export function useReminders(family_member_id?: string | null) {
       console.log("Cleaning up reminders subscription");
       supabase.removeChannel(channel);
     };
-  }, [user, memberId]);
+  }, [effectiveUserId, memberId]);
 
   const addReminder = async (medication_id: string, reminder_time: string): Promise<boolean> => {
-    if (!user) return false;
+    if (!effectiveUserId) return false;
     
-    console.log("Adding reminder:", { medication_id, reminder_time, user_id: user.id, family_member_id: memberId });
+    console.log("Adding reminder:", { medication_id, reminder_time, user_id: effectiveUserId, family_member_id: memberId });
     
     try {
-      const { data, error } = await supabase
-        .from('medication_reminders')
-        .insert({
-          medication_id,
-          user_id: user.id,
-          family_member_id: memberId,
-          reminder_time,
-          is_enabled: true
-        })
-        .select();
-      
-      if (error) throw error;
-      
-      console.log("Reminder added:", data);
-      toast.success("Reminder set successfully");
-      return true;
+      // Use rate limiting for API requests
+      return await withRateLimiting(
+        apiRequestLimiter,
+        async () => {
+          const { data, error } = await supabase
+            .from('medication_reminders')
+            .insert({
+              medication_id,
+              user_id: effectiveUserId,
+              family_member_id: memberId,
+              reminder_time,
+              is_enabled: true
+            })
+            .select();
+          
+          if (error) throw error;
+          
+          console.log("Reminder added:", data);
+          toast.success("Reminder set successfully");
+          return true;
+        },
+        "Too many reminder requests. Please try again in a moment."
+      );
     } catch (err: any) {
       console.error("Error creating reminder:", err);
       toast.error("Failed to set reminder", { description: err.message });
@@ -124,22 +158,29 @@ export function useReminders(family_member_id?: string | null) {
   };
 
   const updateReminder = async (id: string, data: Partial<Omit<MedicationReminder, 'id' | 'user_id' | 'created_at'>>): Promise<boolean> => {
-    if (!user) return false;
+    if (!effectiveUserId) return false;
     
     console.log("Updating reminder:", { id, ...data });
     
     try {
-      const { error } = await supabase
-        .from('medication_reminders')
-        .update(data)
-        .eq('id', id)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      console.log("Reminder updated successfully");
-      toast.success("Reminder updated successfully");
-      return true;
+      // Use rate limiting for API requests
+      return await withRateLimiting(
+        apiRequestLimiter,
+        async () => {
+          const { error } = await supabase
+            .from('medication_reminders')
+            .update(data)
+            .eq('id', id)
+            .eq('user_id', effectiveUserId);
+          
+          if (error) throw error;
+          
+          console.log("Reminder updated successfully");
+          toast.success("Reminder updated successfully");
+          return true;
+        },
+        "Too many update requests. Please try again in a moment."
+      );
     } catch (err: any) {
       console.error("Error updating reminder:", err);
       toast.error("Failed to update reminder", { description: err.message });
@@ -148,22 +189,29 @@ export function useReminders(family_member_id?: string | null) {
   };
 
   const deleteReminder = async (id: string): Promise<boolean> => {
-    if (!user) return false;
+    if (!effectiveUserId) return false;
     
     console.log("Deleting reminder:", id);
     
     try {
-      const { error } = await supabase
-        .from('medication_reminders')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-      console.log("Reminder deleted successfully");
-      toast.success("Reminder deleted successfully");
-      return true;
+      // Use rate limiting for API requests
+      return await withRateLimiting(
+        apiRequestLimiter,
+        async () => {
+          const { error } = await supabase
+            .from('medication_reminders')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', effectiveUserId);
+          
+          if (error) throw error;
+          
+          console.log("Reminder deleted successfully");
+          toast.success("Reminder deleted successfully");
+          return true;
+        },
+        "Too many delete requests. Please try again in a moment."
+      );
     } catch (err: any) {
       console.error("Error deleting reminder:", err);
       toast.error("Failed to delete reminder", { description: err.message });

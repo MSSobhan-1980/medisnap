@@ -27,6 +27,10 @@ interface AuthContextProps {
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  // AILifestyle integration
+  aiLifestyleUserId: string | null;
+  setAILifestyleUserId: (userId: string | null) => void;
+  isAILifestyleAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -38,6 +42,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<any>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [activeMember, setActiveMember] = useState<FamilyMember | null>(null);
+  // AILifestyle integration
+  const [aiLifestyleUserId, setAILifestyleUserId] = useState<string | null>(
+    localStorage.getItem('ailifestyle_user_id')
+  );
+
+  // Effect to handle AILifestyle user ID
+  useEffect(() => {
+    if (aiLifestyleUserId) {
+      localStorage.setItem('ailifestyle_user_id', aiLifestyleUserId);
+    } else {
+      localStorage.removeItem('ailifestyle_user_id');
+    }
+  }, [aiLifestyleUserId]);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -255,6 +272,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      // Also clear AILifestyle auth
+      setAILifestyleUserId(null);
       toast.success("Signed out successfully");
     } catch (err) {
       toast.error("Sign out error", { description: String(err) });
@@ -266,6 +285,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setActiveMember(null);
     }
   };
+
+  // Check if authenticated with AILifestyle
+  const isAILifestyleAuthenticated = !!aiLifestyleUserId;
 
   return (
     <AuthContext.Provider value={{ 
@@ -282,7 +304,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       deleteFamilyMember,
       signUp, 
       signIn, 
-      signOut 
+      signOut,
+      // AILifestyle integration
+      aiLifestyleUserId,
+      setAILifestyleUserId,
+      isAILifestyleAuthenticated
     }}>
       {children}
     </AuthContext.Provider>

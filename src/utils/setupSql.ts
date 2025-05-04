@@ -19,7 +19,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      }) as unknown as Promise<any>);
+      }));
       
       if (getUserRolesResult.error) {
         console.error('Error creating get_user_roles function:', getUserRolesResult.error);
@@ -43,7 +43,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      }) as unknown as Promise<any>);
+      }));
       
       if (getCaregiverDependentsResult.error) {
         console.error('Error creating get_caregiver_dependents function:', getCaregiverDependentsResult.error);
@@ -63,7 +63,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      }) as unknown as Promise<any>);
+      }));
       
       if (getUserMealDetectionsResult.error) {
         console.error('Error creating get_user_meal_detections function:', getUserMealDetectionsResult.error);
@@ -83,7 +83,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      }) as unknown as Promise<any>);
+      }));
       
       if (deleteUserMealDetectionsResult.error) {
         console.error('Error creating delete_user_meal_detections function:', deleteUserMealDetectionsResult.error);
@@ -114,7 +114,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      }) as unknown as Promise<any>);
+      }));
       
       if (insertUserConsentsResult.error) {
         console.error('Error creating insert_user_consents function:', insertUserConsentsResult.error);
@@ -137,7 +137,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      }) as unknown as Promise<any>);
+      }));
       
       if (createExecSqlResult.error) {
         console.error('Error creating exec_sql function:', createExecSqlResult.error);

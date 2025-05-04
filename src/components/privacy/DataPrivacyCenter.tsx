@@ -55,10 +55,10 @@ export default function DataPrivacyCenter() {
       try {
         // First try RPC function
         try {
-          // Use unknown type assertion to bypass strict TypeScript checking
-          const mealResult = await (supabase.rpc('get_user_meal_detections', { 
+          // Use any type assertion to bypass strict TypeScript checking
+          const mealResult = await ((supabase as any).rpc('get_user_meal_detections', { 
             user_uuid: user.id 
-          }) as unknown as {error?: any; data?: any});
+          }));
           
           if (!mealResult.error && mealResult.data) {
             userData.meals = mealResult.data;
@@ -68,10 +68,10 @@ export default function DataPrivacyCenter() {
         } catch (error) {
           console.log('Fallback to direct query for meal_detections');
           // Fallback method if RPC doesn't exist - using type assertion
-          const directResult = await (supabase
-            .from('meal_detections' as any)
+          const directResult = await ((supabase as any)
+            .from('meal_detections')
             .select('*')
-            .eq('user_id', user.id) as unknown as {data?: any});
+            .eq('user_id', user.id));
             
           if (directResult?.data) {
             userData.meals = directResult.data;
@@ -142,18 +142,18 @@ export default function DataPrivacyCenter() {
       
       // Delete meal detections using RPC if available
       try {
-        // Using unknown type assertion to bypass TypeScript checking
-        await (supabase.rpc('delete_user_meal_detections', { 
+        // Using any type assertion to bypass TypeScript checking
+        await ((supabase as any).rpc('delete_user_meal_detections', { 
           user_uuid: user.id 
-        }) as unknown as Promise<any>);
+        }));
       } catch (error) {
         console.error("RPC delete_user_meal_detections failed:", error);
         // Fallback if RPC doesn't exist
         try {
-          await ((supabase
-            .from('meal_detections' as any)
+          await ((supabase as any)
+            .from('meal_detections')
             .delete()
-            .eq('user_id', user.id)) as unknown as Promise<any>);
+            .eq('user_id', user.id));
         } catch (innerError) {
           console.error("Could not delete meal_detections:", innerError);
         }
@@ -164,7 +164,7 @@ export default function DataPrivacyCenter() {
       
       for (const table of tables) {
         try {
-          await (supabase.from(table as any).delete().eq('user_id', user.id) as unknown as Promise<any>);
+          await ((supabase as any).from(table).delete().eq('user_id', user.id));
         } catch (error) {
           console.error(`Error deleting from ${table}:`, error);
         }

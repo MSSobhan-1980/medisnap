@@ -25,10 +25,10 @@ export function useAuthorization() {
         
         // Fetch user roles using safer approach with RPC
         try {
-          // Using unknown type assertion to bypass TypeScript checking
-          const { data: rolesData, error: rolesError } = await (supabase.rpc('get_user_roles', { 
+          // Using any type assertion to bypass TypeScript checking
+          const { data: rolesData, error: rolesError } = await ((supabase as any).rpc('get_user_roles', { 
             user_uuid: user.id 
-          }) as unknown as {data: any[], error: any});
+          }));
           
           if (!rolesError && rolesData) {
             const userRoles = rolesData.map((r: any) => r.role as Role);
@@ -40,10 +40,10 @@ export function useAuthorization() {
           console.error('RPC get_user_roles failed, trying direct query:', error);
           // Fallback to direct query if RPC is not available
           try {
-            const { data, error } = await (supabase as any)
+            const { data, error } = await ((supabase as any)
               .from('user_roles')
               .select('role')
-              .eq('user_id', user.id);
+              .eq('user_id', user.id));
               
             if (error) throw error;
             
@@ -58,10 +58,10 @@ export function useAuthorization() {
         // If user role includes caregiver, fetch dependents using safer approach
         if (roles.includes('caregiver')) {
           try {
-            // Using unknown type assertion to bypass TypeScript checking
-            const { data: dependentsData, error: dependentsError } = await (supabase.rpc('get_caregiver_dependents', { 
+            // Using any type assertion to bypass TypeScript checking
+            const { data: dependentsData, error: dependentsError } = await ((supabase as any).rpc('get_caregiver_dependents', { 
               caregiver_uuid: user.id 
-            }) as unknown as {data: any[], error: any});
+            }));
             
             if (!dependentsError && dependentsData) {
               setDependents(dependentsData.map((d: any) => ({
@@ -75,7 +75,7 @@ export function useAuthorization() {
             console.error('RPC get_caregiver_dependents failed, trying direct query:', error);
             // Fallback to direct query
             try {
-              const { data, error } = await (supabase as any)
+              const { data, error } = await ((supabase as any)
                 .from('caregiver_relationships')
                 .select(`
                   dependent_id,
@@ -83,7 +83,7 @@ export function useAuthorization() {
                     full_name
                   )
                 `)
-                .eq('caregiver_id', user.id);
+                .eq('caregiver_id', user.id));
                 
               if (error) throw error;
               

@@ -25,9 +25,10 @@ export function useAuthorization() {
         
         // Fetch user roles using safer approach with RPC
         try {
+          // Using unknown type assertion to bypass TypeScript checking
           const { data: rolesData, error: rolesError } = await (supabase.rpc('get_user_roles', { 
             user_uuid: user.id 
-          }) as any);
+          }) as unknown as {data: any[], error: any});
           
           if (!rolesError && rolesData) {
             const userRoles = rolesData.map((r: any) => r.role as Role);
@@ -57,9 +58,10 @@ export function useAuthorization() {
         // If user role includes caregiver, fetch dependents using safer approach
         if (roles.includes('caregiver')) {
           try {
+            // Using unknown type assertion to bypass TypeScript checking
             const { data: dependentsData, error: dependentsError } = await (supabase.rpc('get_caregiver_dependents', { 
               caregiver_uuid: user.id 
-            }) as any);
+            }) as unknown as {data: any[], error: any});
             
             if (!dependentsError && dependentsData) {
               setDependents(dependentsData.map((d: any) => ({

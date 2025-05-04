@@ -61,9 +61,10 @@ export default function ConsentPrompt({
       
       // First try using RPC function
       try {
-        const { error } = await supabase.rpc('insert_user_consents', { 
+        // Use a more aggressive type cast to bypass TypeScript's strict checking
+        const { error } = await (supabase.rpc('insert_user_consents', { 
           consent_data: JSON.stringify(consentRecords) 
-        }) as any;
+        }) as unknown as {error: any});
         
         if (error) throw error;
       } catch (error) {
@@ -71,9 +72,10 @@ export default function ConsentPrompt({
         
         // Fallback to direct insert with type assertion
         try {
+          // Use a more aggressive type cast for the table access and the insert method
           const { error: insertError } = await (supabase
             .from('user_consents' as any)
-            .insert(consentRecords as any)) as any;
+            .insert(consentRecords as any) as unknown as {error: any});
             
           if (insertError) throw insertError;
         } catch (innerError) {

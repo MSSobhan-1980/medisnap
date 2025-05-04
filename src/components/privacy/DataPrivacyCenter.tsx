@@ -55,9 +55,10 @@ export default function DataPrivacyCenter() {
       try {
         // First try RPC function
         try {
-          const mealResult = await supabase.rpc('get_user_meal_detections', { 
+          // Use unknown type assertion to bypass strict TypeScript checking
+          const mealResult = await (supabase.rpc('get_user_meal_detections', { 
             user_uuid: user.id 
-          }) as any;
+          }) as unknown as {error?: any; data?: any});
           
           if (!mealResult.error && mealResult.data) {
             userData.meals = mealResult.data;
@@ -70,7 +71,7 @@ export default function DataPrivacyCenter() {
           const directResult = await (supabase
             .from('meal_detections' as any)
             .select('*')
-            .eq('user_id', user.id)) as any;
+            .eq('user_id', user.id) as unknown as {data?: any});
             
           if (directResult?.data) {
             userData.meals = directResult.data;
@@ -141,17 +142,18 @@ export default function DataPrivacyCenter() {
       
       // Delete meal detections using RPC if available
       try {
+        // Using unknown type assertion to bypass TypeScript checking
         await (supabase.rpc('delete_user_meal_detections', { 
           user_uuid: user.id 
-        }) as any);
+        }) as unknown as Promise<any>);
       } catch (error) {
         console.error("RPC delete_user_meal_detections failed:", error);
         // Fallback if RPC doesn't exist
         try {
-          await (supabase
+          await ((supabase
             .from('meal_detections' as any)
             .delete()
-            .eq('user_id', user.id) as any);
+            .eq('user_id', user.id)) as unknown as Promise<any>);
         } catch (innerError) {
           console.error("Could not delete meal_detections:", innerError);
         }
@@ -162,7 +164,7 @@ export default function DataPrivacyCenter() {
       
       for (const table of tables) {
         try {
-          await supabase.from(table as any).delete().eq('user_id', user.id);
+          await (supabase.from(table as any).delete().eq('user_id', user.id) as unknown as Promise<any>);
         } catch (error) {
           console.error(`Error deleting from ${table}:`, error);
         }

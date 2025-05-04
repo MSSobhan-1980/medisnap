@@ -10,7 +10,7 @@ export const setupRequiredSqlFunctions = async () => {
   try {
     // Create get_user_roles function
     try {
-      const getUserRolesResult = await (supabase as any).rpc('exec_sql', {
+      const getUserRolesResult = await ((supabase as any).rpc('exec_sql', {
         sql_statement: `
           CREATE OR REPLACE FUNCTION public.get_user_roles(user_uuid UUID)
           RETURNS TABLE (role TEXT) AS $$
@@ -19,7 +19,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      });
+      }) as unknown as Promise<any>);
       
       if (getUserRolesResult.error) {
         console.error('Error creating get_user_roles function:', getUserRolesResult.error);
@@ -30,7 +30,7 @@ export const setupRequiredSqlFunctions = async () => {
     
     // Create get_caregiver_dependents function
     try {
-      const getCaregiverDependentsResult = await (supabase as any).rpc('exec_sql', {
+      const getCaregiverDependentsResult = await ((supabase as any).rpc('exec_sql', {
         sql_statement: `
           CREATE OR REPLACE FUNCTION public.get_caregiver_dependents(caregiver_uuid UUID)
           RETURNS TABLE (dependent_id UUID, full_name TEXT) AS $$
@@ -43,7 +43,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      });
+      }) as unknown as Promise<any>);
       
       if (getCaregiverDependentsResult.error) {
         console.error('Error creating get_caregiver_dependents function:', getCaregiverDependentsResult.error);
@@ -54,7 +54,7 @@ export const setupRequiredSqlFunctions = async () => {
     
     // Create get_user_meal_detections function
     try {
-      const getUserMealDetectionsResult = await (supabase as any).rpc('exec_sql', {
+      const getUserMealDetectionsResult = await ((supabase as any).rpc('exec_sql', {
         sql_statement: `
           CREATE OR REPLACE FUNCTION public.get_user_meal_detections(user_uuid UUID)
           RETURNS SETOF public.meal_detections AS $$
@@ -63,7 +63,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      });
+      }) as unknown as Promise<any>);
       
       if (getUserMealDetectionsResult.error) {
         console.error('Error creating get_user_meal_detections function:', getUserMealDetectionsResult.error);
@@ -74,7 +74,7 @@ export const setupRequiredSqlFunctions = async () => {
     
     // Create delete_user_meal_detections function
     try {
-      const deleteUserMealDetectionsResult = await (supabase as any).rpc('exec_sql', {
+      const deleteUserMealDetectionsResult = await ((supabase as any).rpc('exec_sql', {
         sql_statement: `
           CREATE OR REPLACE FUNCTION public.delete_user_meal_detections(user_uuid UUID)
           RETURNS void AS $$
@@ -83,7 +83,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      });
+      }) as unknown as Promise<any>);
       
       if (deleteUserMealDetectionsResult.error) {
         console.error('Error creating delete_user_meal_detections function:', deleteUserMealDetectionsResult.error);
@@ -94,7 +94,7 @@ export const setupRequiredSqlFunctions = async () => {
     
     // Create insert_user_consents function
     try {
-      const insertUserConsentsResult = await (supabase as any).rpc('exec_sql', {
+      const insertUserConsentsResult = await ((supabase as any).rpc('exec_sql', {
         sql_statement: `
           CREATE OR REPLACE FUNCTION public.insert_user_consents(consent_data JSONB)
           RETURNS void AS $$
@@ -114,7 +114,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      });
+      }) as unknown as Promise<any>);
       
       if (insertUserConsentsResult.error) {
         console.error('Error creating insert_user_consents function:', insertUserConsentsResult.error);
@@ -125,7 +125,7 @@ export const setupRequiredSqlFunctions = async () => {
     
     // Create exec_sql helper function if it doesn't exist
     try {
-      const createExecSqlResult = await (supabase as any).rpc('exec_sql', {
+      const createExecSqlResult = await ((supabase as any).rpc('exec_sql', {
         sql_statement: `
           CREATE OR REPLACE FUNCTION public.exec_sql(sql_statement text)
           RETURNS json AS $$
@@ -137,7 +137,7 @@ export const setupRequiredSqlFunctions = async () => {
           END;
           $$ LANGUAGE plpgsql SECURITY DEFINER;
         `
-      });
+      }) as unknown as Promise<any>);
       
       if (createExecSqlResult.error) {
         console.error('Error creating exec_sql function:', createExecSqlResult.error);

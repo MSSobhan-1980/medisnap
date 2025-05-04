@@ -63,7 +63,7 @@ export default function ConsentPrompt({
       try {
         const { error } = await supabase.rpc('insert_user_consents', { 
           consent_data: JSON.stringify(consentRecords) 
-        });
+        }) as any;
         
         if (error) throw error;
       } catch (error) {
@@ -73,7 +73,7 @@ export default function ConsentPrompt({
         try {
           const { error: insertError } = await (supabase
             .from('user_consents' as any)
-            .insert(consentRecords as any));
+            .insert(consentRecords as any)) as any;
             
           if (insertError) throw insertError;
         } catch (innerError) {

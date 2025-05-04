@@ -25,9 +25,9 @@ export function useAuthorization() {
         
         // Fetch user roles using safer approach with RPC
         try {
-          const { data: rolesData, error: rolesError } = await supabase.rpc('get_user_roles', { 
+          const { data: rolesData, error: rolesError } = await (supabase.rpc('get_user_roles', { 
             user_uuid: user.id 
-          });
+          }) as any);
           
           if (!rolesError && rolesData) {
             const userRoles = rolesData.map((r: any) => r.role as Role);
@@ -57,9 +57,9 @@ export function useAuthorization() {
         // If user role includes caregiver, fetch dependents using safer approach
         if (roles.includes('caregiver')) {
           try {
-            const { data: dependentsData, error: dependentsError } = await supabase.rpc('get_caregiver_dependents', { 
+            const { data: dependentsData, error: dependentsError } = await (supabase.rpc('get_caregiver_dependents', { 
               caregiver_uuid: user.id 
-            });
+            }) as any);
             
             if (!dependentsError && dependentsData) {
               setDependents(dependentsData.map((d: any) => ({

@@ -57,7 +57,7 @@ export default function DataPrivacyCenter() {
         try {
           const mealResult = await supabase.rpc('get_user_meal_detections', { 
             user_uuid: user.id 
-          });
+          }) as any;
           
           if (!mealResult.error && mealResult.data) {
             userData.meals = mealResult.data;
@@ -70,9 +70,9 @@ export default function DataPrivacyCenter() {
           const directResult = await (supabase
             .from('meal_detections' as any)
             .select('*')
-            .eq('user_id', user.id));
+            .eq('user_id', user.id)) as any;
             
-          if (directResult.data) {
+          if (directResult?.data) {
             userData.meals = directResult.data;
           }
         }
@@ -141,9 +141,9 @@ export default function DataPrivacyCenter() {
       
       // Delete meal detections using RPC if available
       try {
-        await supabase.rpc('delete_user_meal_detections', { 
+        await (supabase.rpc('delete_user_meal_detections', { 
           user_uuid: user.id 
-        });
+        }) as any);
       } catch (error) {
         console.error("RPC delete_user_meal_detections failed:", error);
         // Fallback if RPC doesn't exist
@@ -151,7 +151,7 @@ export default function DataPrivacyCenter() {
           await (supabase
             .from('meal_detections' as any)
             .delete()
-            .eq('user_id', user.id));
+            .eq('user_id', user.id) as any);
         } catch (innerError) {
           console.error("Could not delete meal_detections:", innerError);
         }
@@ -162,7 +162,7 @@ export default function DataPrivacyCenter() {
       
       for (const table of tables) {
         try {
-          await supabase.from(table).delete().eq('user_id', user.id);
+          await supabase.from(table as any).delete().eq('user_id', user.id);
         } catch (error) {
           console.error(`Error deleting from ${table}:`, error);
         }

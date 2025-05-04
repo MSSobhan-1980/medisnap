@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { setupRequiredSqlFunctions } from "@/utils/setupSql";
+import { toast } from "sonner";
 
 export default function DataPrivacyPage() {
   const { user, loading } = useAuth();
@@ -17,7 +18,21 @@ export default function DataPrivacyPage() {
   }, [user, loading, navigate]);
 
   const handleSetupFunctions = async () => {
-    await setupRequiredSqlFunctions();
+    try {
+      toast.loading("Setting up database functions...");
+      const success = await setupRequiredSqlFunctions();
+      toast.dismiss();
+      
+      if (success) {
+        toast.success("Database functions set up successfully");
+      } else {
+        toast.error("Failed to set up database functions");
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("An error occurred while setting up database functions");
+      console.error("Error setting up functions:", error);
+    }
   };
   
   return (

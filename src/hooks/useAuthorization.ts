@@ -23,37 +23,70 @@ export function useAuthorization() {
       try {
         setLoading(true);
         
-        // Fetch user roles
-        const { data: rolesData, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id);
+        // Fetch user roles using safer approach with RPC
+        try {
+          const { data: rolesData, error: rolesError } = await supabase.rpc('get_user_roles', { user_uuid: user.id });
           
-        if (rolesError) throw rolesError;
-        
-        const userRoles = rolesData?.map(r => r.role as Role) || ['user'];
-        setRoles(userRoles);
-        
-        // If user is a caregiver, fetch their dependents
-        if (userRoles.includes('caregiver')) {
-          const { data: dependentsData, error: dependentsError } = await supabase
-            .from('caregiver_relationships')
-            .select(`
-              dependent_id,
-              profiles!caregiver_relationships_dependent_id_fkey (
-                full_name
-              )
-            `)
-            .eq('caregiver_id', user.id);
+          if (!rolesError && rolesData) {
+            const userRoles = rolesData.map((r: any) => r.role as Role);
+            setRoles(userRoles.length ? userRoles : ['user']);
+          } else {
+            // Fallback to direct query if RPC is not available
+            const { data, error } = await (supabase as any)
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.id);
+              
+            if (error) throw error;
             
-          if (dependentsError) throw dependentsError;
-          
-          setDependents(
-            dependentsData?.map(d => ({
-              id: d.dependent_id,
-              name: d.profiles?.full_name || 'Unknown'
-            })) || []
-          );
+            const userRoles = data?.map((r: any) => r.role as Role) || ['user'];
+            setRoles(userRoles);
+          }
+        } catch (error) {
+          console.error('Error fetching roles:', error);
+          setRoles(['user']); // Default to user role on error
+        }
+        
+        // If user role includes caregiver, fetch dependents using safer approach
+        if (roles.includes('caregiver')) {
+          try {
+            const { data: dependentsData, error: dependentsError } = await supabase.rpc('get_caregiver_dependents', { caregiver_uuid: user.id });
+            
+            if (!dependentsError && dependentsData) {
+              setDependents(dependentsData.map((d: any) => ({
+                id: d.dependent_id,
+                name: d.full_name || 'Unknown'
+              })));
+            } else {
+              // Fallback to direct query
+              try {
+                const { data, error } = await (supabase as any)
+                  .from('caregiver_relationships')
+                  .select(`
+                    dependent_id,
+                    profiles!caregiver_relationships_dependent_id_fkey (
+                      full_name
+                    )
+                  `)
+                  .eq('caregiver_id', user.id);
+                  
+                if (error) throw error;
+                
+                setDependents(
+                  data?.map((d: any) => ({
+                    id: d.dependent_id,
+                    name: d.profiles?.full_name || 'Unknown'
+                  })) || []
+                );
+              } catch (innerError) {
+                console.error('Error in fallback dependent query:', innerError);
+                setDependents([]);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching dependents:', error);
+            setDependents([]);
+          }
         }
       } catch (error) {
         console.error('Error fetching authorization data:', error);
@@ -64,7 +97,7 @@ export function useAuthorization() {
     };
     
     fetchRoles();
-  }, [user]);
+  }, [user, roles.includes('caregiver')]);
   
   const hasRole = (role: Role): boolean => roles.includes(role);
   

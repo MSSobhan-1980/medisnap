@@ -19,14 +19,29 @@ import AuthPage from "@/pages/AuthPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 import DataPrivacyPage from "@/pages/DataPrivacyPage";
 import CookieConsent from "@/components/privacy/CookieConsent";
+import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
+import TermsOfServicePage from "@/pages/legal/TermsOfServicePage";
+import CookiePolicyPage from "@/pages/legal/CookiePolicyPage";
+import ContactPage from "@/pages/ContactPage";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { AILifestyleAuthVerifier } from "@/components/auth/AILifestyleAuthVerifier";
-// Import LogRocket dynamically since it's only used in production
-import LogRocket from "logrocket";
 
-// Initialize LogRocket only in production
+// Import LogRocket conditionally
+let LogRocket: any;
+
+// Initialize LogRocket only in production and if available
 if (import.meta.env.PROD) {
-  LogRocket.init("nutrisnap/app");
+  try {
+    // Dynamic import for LogRocket
+    import('logrocket').then((module) => {
+      LogRocket = module.default;
+      LogRocket.init("nutrisnap/app");
+    }).catch((err) => {
+      console.error("LogRocket failed to load:", err);
+    });
+  } catch (error) {
+    console.error("Error importing LogRocket:", error);
+  }
 }
 
 const queryClient = new QueryClient({

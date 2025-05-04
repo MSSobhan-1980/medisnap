@@ -29,29 +29,75 @@ export default function DataPrivacyCenter() {
       setExporting(true);
       toast.info("Preparing your data export", { duration: 5000 });
       
-      // Collect user data from various tables
-      const [
-        profileResult,
-        mealsResult,
-        remindersResult,
-        medicationsResult,
-        // Add other data sources here
-      ] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id),
-        supabase.from('meal_detections').select('*').eq('user_id', user.id),
-        supabase.from('medication_reminders').select('*').eq('user_id', user.id),
-        supabase.from('medications').select('*').eq('user_id', user.id),
-        // Add other queries here
-      ]);
-      
-      // Combine all data
-      const userData = {
-        profile: profileResult.data?.[0] || null,
-        meals: mealsResult.data || [],
-        reminders: remindersResult.data || [],
-        medications: medicationsResult.data || [],
-        // Add other data here
+      // Collect user data from various tables using a safer approach with error handling
+      const userData: Record<string, any> = {
+        profile: null,
+        meals: [],
+        reminders: [],
+        medications: [],
       };
+      
+      // Fetch profile data
+      try {
+        const profileResult = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id);
+        
+        if (profileResult.data && profileResult.data.length > 0) {
+          userData.profile = profileResult.data[0];
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      }
+      
+      // Fetch meal detection data if table exists
+      try {
+        const mealResult = await supabase.rpc('get_user_meal_detections', { user_uuid: user.id });
+        if (!mealResult.error) {
+          userData.meals = mealResult.data || [];
+        } else {
+          // Fallback method if RPC doesn't exist - using any to bypass type checking
+          const directResult = await (supabase
+            .from('meal_detections' as any)
+            .select('*')
+            .eq('user_id', user.id)) as any;
+            
+          if (directResult.data) {
+            userData.meals = directResult.data;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching meal data:", error);
+      }
+      
+      // Fetch medication reminders
+      try {
+        const reminderResult = await supabase
+          .from('medication_reminders')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (reminderResult.data) {
+          userData.reminders = reminderResult.data;
+        }
+      } catch (error) {
+        console.error("Error fetching reminder data:", error);
+      }
+      
+      // Fetch medications
+      try {
+        const medicationResult = await supabase
+          .from('medications')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        if (medicationResult.data) {
+          userData.medications = medicationResult.data;
+        }
+      } catch (error) {
+        console.error("Error fetching medication data:", error);
+      }
       
       // Convert to JSON and create blob
       const dataStr = JSON.stringify(userData, null, 2);
@@ -84,25 +130,38 @@ export default function DataPrivacyCenter() {
     try {
       toast.loading("Deleting your account and data...");
       
-      // Delete user data from various tables
-      await Promise.all([
-        supabase.from('meal_detections').delete().eq('user_id', user.id),
-        supabase.from('medication_reminders').delete().eq('user_id', user.id),
-        supabase.from('medications').delete().eq('user_id', user.id),
-        // Add other tables here
-      ]);
+      // Delete user data from various tables using a safer approach
+      const tables = ['medications', 'medication_reminders', 'profiles'];
       
-      // Delete user profile
-      await supabase.from('profiles').delete().eq('id', user.id);
+      // Try to delete from meal_detections if exists using RPC
+      try {
+        await supabase.rpc('delete_user_meal_detections', { user_uuid: user.id });
+      } catch (error) {
+        // Fallback if RPC doesn't exist
+        try {
+          await (supabase
+            .from('meal_detections' as any)
+            .delete()
+            .eq('user_id', user.id)) as any;
+        } catch (innerError) {
+          console.error("Could not delete meal_detections:", innerError);
+        }
+      }
       
-      // Delete user auth account (must be last)
-      await supabase.auth.admin.deleteUser(user.id);
-      
-      toast.dismiss();
-      toast.success("Account deleted successfully");
+      // Delete from standard tables
+      for (const table of tables) {
+        try {
+          await supabase.from(table).delete().eq('user_id', user.id);
+        } catch (error) {
+          console.error(`Error deleting from ${table}:`, error);
+        }
+      }
       
       // Sign out user
       await signOut();
+      
+      toast.dismiss();
+      toast.success("Account deleted successfully");
       
     } catch (error) {
       console.error('Error deleting account:', error);

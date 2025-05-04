@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      caregiver_relationships: {
+        Row: {
+          caregiver_id: string
+          created_at: string
+          dependent_id: string
+          id: string
+        }
+        Insert: {
+          caregiver_id: string
+          created_at?: string
+          dependent_id: string
+          id?: string
+        }
+        Update: {
+          caregiver_id?: string
+          created_at?: string
+          dependent_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       family_members: {
         Row: {
           avatar_url: string | null
@@ -33,6 +54,30 @@ export type Database = {
           name?: string
           primary_user_id?: string
           relationship?: string
+        }
+        Relationships: []
+      }
+      meal_detections: {
+        Row: {
+          analysis: Json | null
+          created_at: string
+          id: string
+          image_url: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -164,6 +209,54 @@ export type Database = {
           full_name?: string | null
           id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      user_consents: {
+        Row: {
+          consent_id: string
+          feature_id: string
+          granted: boolean
+          granted_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          consent_id: string
+          feature_id: string
+          granted?: boolean
+          granted_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          consent_id?: string
+          feature_id?: string
+          granted?: boolean
+          granted_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
         }
         Relationships: []
       }

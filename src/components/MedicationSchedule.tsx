@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit, Check, Sun, Circle, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,49 +82,35 @@ export default function MedicationSchedule({
   const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
     const [morning, noon, evening] = getDosingPattern(medication);
     
-    const shouldTake = 
-      (period === 'morning' && morning > 0) ||
-      (period === 'afternoon' && noon > 0) ||
-      (period === 'evening' && evening > 0);
+    const dosesCount = 
+      period === 'morning' ? morning : 
+      period === 'afternoon' ? noon : 
+      evening;
     
-    if (!shouldTake) {
+    if (dosesCount <= 0) {
       return <div className="text-gray-300">-</div>;
     }
     
-    // Get appropriate time label
-    let timeDisplay = "";
-    if (period === 'morning') {
-      timeDisplay = "Morning";
-    } else if (period === 'afternoon') {
-      timeDisplay = "Noon";
-    } else {
-      timeDisplay = "Evening";
-    }
-    
-    // Get icon for the period
+    // Get appropriate time label and icon
     let icon;
     if (period === 'morning') {
-      icon = <Sun className="h-4 w-4 mr-1 text-yellow-500" />;
+      icon = <Sun className="h-4 w-4 text-yellow-500" />;
     } else if (period === 'afternoon') {
-      icon = <Circle className="h-4 w-4 mr-1 text-orange-500" />;
+      icon = <Circle className="h-4 w-4 text-orange-500" />;
     } else {
-      icon = <Moon className="h-4 w-4 mr-1 text-blue-500" />;
+      icon = <Moon className="h-4 w-4 text-blue-500" />;
     }
     
-    // Show timing with additional info
-    const timingText = medication.timing ? 
-      medication.timing.replace('_', ' ') : '';
-    
+    // Show timing with pill count
     return (
-      <div className="flex flex-col items-start">
-        <div className="flex items-center">
-          {icon}
-          <Check className="h-4 w-4 text-green-500" />
-          <span className="text-gray-600 text-sm ml-1">{timeDisplay}</span>
-        </div>
-        {medication.timing && (
-          <Badge variant="outline" className="mt-1 text-xs">
-            {timingText}
+      <div className="flex items-center">
+        {icon}
+        <span className="font-medium ml-1">
+          {dosesCount > 1 ? `${dosesCount} pills` : '1 pill'}
+        </span>
+        {medication.timing && period === medication.timing.replace('_', ' ') && (
+          <Badge variant="outline" className="ml-2 text-xs">
+            {medication.timing.replace('_', ' ')}
           </Badge>
         )}
       </div>

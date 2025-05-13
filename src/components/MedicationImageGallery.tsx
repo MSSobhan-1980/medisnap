@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Trash2, RefreshCw } from 'lucide-react';
+import { Trash2, RefreshCw, ImageIcon } from 'lucide-react';
 
 const MedicationImageGallery = () => {
   const [images, setImages] = useState<string[]>([]);
@@ -62,7 +62,16 @@ const MedicationImageGallery = () => {
     fetchUserImages();
   };
 
-  if (loading && images.length === 0) return <div>Loading images...</div>;
+  if (loading && images.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <div className="flex justify-center mb-4">
+          <ImageIcon className="h-12 w-12 text-gray-300" />
+        </div>
+        <div>Loading images...</div>
+      </div>
+    );
+  }
   
   return (
     <div>
@@ -82,6 +91,9 @@ const MedicationImageGallery = () => {
       
       {images.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-md border border-gray-200">
+          <div className="flex justify-center mb-2">
+            <ImageIcon className="h-8 w-8 text-gray-300" />
+          </div>
           <p className="text-gray-500">No images uploaded yet</p>
         </div>
       ) : (

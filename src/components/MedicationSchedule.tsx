@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit, Check } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit, Check, Sun, Circle, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,10 +76,20 @@ export default function MedicationSchedule({
         const timingText = medication.timing ? 
           medication.timing.replace('_', ' ') : '';
         
+        let icon;
+        if (period === 'morning') {
+          icon = <Sun className="h-4 w-4 mr-1 text-yellow-500" />;
+        } else if (period === 'afternoon') {
+          icon = <Circle className="h-4 w-4 mr-1 text-orange-500" />;
+        } else {
+          icon = <Moon className="h-4 w-4 mr-1 text-blue-500" />;
+        }
+        
         return (
           <div className="flex flex-col items-start">
             <div className="flex items-center">
-              <Check className="h-4 w-4 mr-1 text-green-500" />
+              {icon}
+              <Check className="h-4 w-4 text-green-500" />
               {timeDisplay && (
                 <span className="text-gray-600 text-sm ml-1">{timeDisplay}</span>
               )}
@@ -93,11 +103,11 @@ export default function MedicationSchedule({
         );
       }
       
-      return "-";
+      return <div className="text-gray-300">-</div>;
     }
     
     // Fallback to time-based check if no dosing pattern
-    if (!medication.time) return "-";
+    if (!medication.time) return <div className="text-gray-300">-</div>;
     
     const hour = parseInt(medication.time.split(':')[0], 10);
     const isMorning = hour >= 5 && hour < 12;
@@ -110,17 +120,26 @@ export default function MedicationSchedule({
       (period === 'afternoon' && isAfternoon) ||
       (period === 'evening' && isEvening);
     
-    if (!isInPeriod) return "-";
+    if (!isInPeriod) return <div className="text-gray-300">-</div>;
     
     // Show time with timing if available
     const timingText = medication.timing ? 
       medication.timing.replace('_', ' ') : '';
     
+    let icon;
+    if (period === 'morning') {
+      icon = <Sun className="h-4 w-4 mr-1 text-yellow-500" />;
+    } else if (period === 'afternoon') {
+      icon = <Circle className="h-4 w-4 mr-1 text-orange-500" />;
+    } else {
+      icon = <Moon className="h-4 w-4 mr-1 text-blue-500" />;
+    }
+    
     return (
       <div className="flex flex-col items-start">
         <div className="flex items-center">
-          <AlarmClock className="h-3 w-3 mr-1 text-medsnap-blue" />
-          <span>{medication.time}</span>
+          {icon}
+          <span className="ml-1">{medication.time}</span>
         </div>
         {medication.timing && (
           <Badge variant="outline" className="mt-1 text-xs">
@@ -129,6 +148,27 @@ export default function MedicationSchedule({
         )}
       </div>
     );
+  };
+  
+  // Get dosing pattern as readable text
+  const getDosingPatternText = (medication: Medication) => {
+    const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d\+\d\+\d)/);
+    
+    if (!dosingPatternMatch) return null;
+    
+    const dosingPattern = dosingPatternMatch[1];
+    
+    // Map specific patterns to their descriptions
+    if (dosingPattern === "1+0+0") return "Morning";
+    if (dosingPattern === "0+1+0") return "Noon";
+    if (dosingPattern === "0+0+1") return "Evening";
+    if (dosingPattern === "1+1+0") return "Morning & Noon";
+    if (dosingPattern === "1+0+1") return "Morning & Evening";
+    if (dosingPattern === "0+1+1") return "Noon & Evening";
+    if (dosingPattern === "1+1+1") return "Morning, Noon & Evening";
+    
+    // Return the pattern itself if it doesn't match a predefined description
+    return dosingPattern;
   };
   
   // Display a placeholder if medication name is empty
@@ -239,9 +279,9 @@ export default function MedicationSchedule({
                         <TableHead className="w-10">#</TableHead>
                         <TableHead>Medication</TableHead>
                         <TableHead className="w-[120px]">Morning</TableHead>
-                        <TableHead className="w-[120px]">Afternoon</TableHead>
+                        <TableHead className="w-[120px]">Noon</TableHead>
                         <TableHead className="w-[120px]">Evening</TableHead>
-                        <TableHead className="w-[180px]">Instructions</TableHead>
+                        <TableHead className="w-[180px]">Dosing Pattern</TableHead>
                         <TableHead className="w-[120px] text-right">Status</TableHead>
                         <TableHead className="w-[100px] text-center">Actions</TableHead>
                       </TableRow>
@@ -272,14 +312,13 @@ export default function MedicationSchedule({
                             <TableCell>{getTimingDisplay(med, 'afternoon')}</TableCell>
                             <TableCell>{getTimingDisplay(med, 'evening')}</TableCell>
                             <TableCell>
-                              {med.instructions ? (
-                                <div className="flex items-start">
-                                  <FileText className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
-                                  <span className="text-sm">{med.instructions}</span>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-gray-400">No special instructions</span>
-                              )}
+                              <div className="flex items-start">
+                                {getDosingPatternText(med) ? (
+                                  <span className="text-sm font-medium">{getDosingPatternText(med)}</span>
+                                ) : (
+                                  <span className="text-sm text-gray-400">No dosing pattern</span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               {getStatusComponent(med)}

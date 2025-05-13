@@ -1,24 +1,18 @@
+
 import { useState } from "react";
-import { Clock, CheckCircle, XCircle, Pill, FileText, ListOrdered, Trash2, AlarmClock, Edit, Check, Sun, Circle, Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Medication } from "@/types/medication";
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
+import { Medication } from "@/types/medication";
 import EditMedicationForm from "./EditMedicationForm";
+import { MedicationTable } from "./medication/MedicationTable";
+import { MedicationWeeklyView } from "./medication/MedicationWeeklyView";
+import { MedicationMonthlyView } from "./medication/MedicationMonthlyView";
 
 interface MedicationScheduleProps {
   medications: Medication[];
@@ -43,150 +37,6 @@ export default function MedicationSchedule({
   
   // Format date for display
   const formattedDate = date ? format(date, "PPP") : "";
-  
-  // Get dosing pattern from the medication notes or timing field
-  const getDosingPattern = (medication: Medication): [number, number, number] => {
-    console.log(`Getting dosing pattern for ${medication.name}:`, medication.notes);
-    
-    // Try to extract from notes using the pattern "Dosing pattern: 1+0+0"
-    const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d+)\+(\d+)\+(\d+)/);
-    
-    if (dosingPatternMatch) {
-      const morning = parseInt(dosingPatternMatch[1]);
-      const noon = parseInt(dosingPatternMatch[2]);
-      const evening = parseInt(dosingPatternMatch[3]);
-      console.log(`Extracted dosing pattern: [${morning}, ${noon}, ${evening}]`);
-      return [morning, noon, evening];
-    }
-    
-    // If no dosing pattern in notes, check the timing field
-    if (medication.timing) {
-      if (medication.timing === 'morning') return [1, 0, 0];
-      if (medication.timing === 'afternoon') return [0, 1, 0]; 
-      if (medication.timing === 'evening') return [0, 0, 1];
-    }
-    
-    // If no specific pattern, make a best guess based on time
-    if (medication.time) {
-      const hour = parseInt(medication.time.split(':')[0], 10);
-      if (hour >= 5 && hour < 12) return [1, 0, 0]; // Morning
-      if (hour >= 12 && hour < 17) return [0, 1, 0]; // Noon
-      return [0, 0, 1]; // Evening
-    }
-    
-    console.log("No dosing pattern found, defaulting to [0, 0, 0]");
-    return [0, 0, 0];
-  };
-  
-  // Get timing display for a specific period
-  const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
-    const [morning, noon, evening] = getDosingPattern(medication);
-    
-    const dosesCount = 
-      period === 'morning' ? morning : 
-      period === 'afternoon' ? noon : 
-      evening;
-    
-    if (dosesCount <= 0) {
-      return <div className="text-gray-300">-</div>;
-    }
-    
-    // Get appropriate time label and icon
-    let icon;
-    if (period === 'morning') {
-      icon = <Sun className="h-4 w-4 text-yellow-500" />;
-    } else if (period === 'afternoon') {
-      icon = <Circle className="h-4 w-4 text-orange-500" />;
-    } else {
-      icon = <Moon className="h-4 w-4 text-blue-500" />;
-    }
-    
-    // Show timing with pill count
-    return (
-      <div className="flex items-center">
-        {icon}
-        <span className="font-medium ml-1">
-          {dosesCount > 1 ? `${dosesCount} pills` : '1 pill'}
-        </span>
-        {medication.timing && period === medication.timing.replace('_', ' ') && (
-          <Badge variant="outline" className="ml-2 text-xs">
-            {medication.timing.replace('_', ' ')}
-          </Badge>
-        )}
-      </div>
-    );
-  };
-  
-  // Get dosing pattern as readable text
-  const getDosingPatternText = (medication: Medication) => {
-    const [morning, noon, evening] = getDosingPattern(medication);
-    
-    // Map specific patterns to their descriptions
-    if (morning === 1 && noon === 0 && evening === 0) return "Morning";
-    if (morning === 0 && noon === 1 && evening === 0) return "Noon";
-    if (morning === 0 && noon === 0 && evening === 1) return "Evening";
-    if (morning === 1 && noon === 1 && evening === 0) return "Morning & Noon";
-    if (morning === 1 && noon === 0 && evening === 1) return "Morning & Evening";
-    if (morning === 0 && noon === 1 && evening === 1) return "Noon & Evening";
-    if (morning === 1 && noon === 1 && evening === 1) return "Morning, Noon & Evening";
-    
-    // If there are multiple doses in a period
-    if (morning > 1 || noon > 1 || evening > 1) {
-      return `${morning}+${noon}+${evening}`;
-    }
-    
-    // If nothing matches, show the pattern
-    if (morning || noon || evening) {
-      return `${morning}+${noon}+${evening}`;
-    }
-    
-    return "No pattern";
-  };
-  
-  // Display a placeholder if medication name is empty
-  const getMedicationName = (medication: Medication) => {
-    if (!medication.name) return "Unnamed Medication";
-    return medication.name;
-  };
-  
-  // Get status component
-  const getStatusComponent = (medication: Medication) => {
-    if (medication.status === 'taken') {
-      return (
-        <div className="flex items-center text-green-600">
-          <CheckCircle className="h-5 w-5 mr-1" />
-          <span className="text-sm font-medium">Taken</span>
-        </div>
-      );
-    } else if (medication.status === 'missed') {
-      return (
-        <div className="flex items-center text-red-600">
-          <XCircle className="h-5 w-5 mr-1" />
-          <span className="text-sm font-medium">Missed</span>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => onMarkAsTaken(medication.id)}
-          >
-            Taken
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="text-red-500 border-red-200 hover:bg-red-50"
-            onClick={() => onMarkAsMissed(medication.id)}
-          >
-            Missed
-          </Button>
-        </div>
-      );
-    }
-  };
 
   const handleDelete = async (medicationId: string) => {
     if (!onDelete) return;
@@ -205,11 +55,6 @@ export default function MedicationSchedule({
 
   const handleEditComplete = () => {
     setEditingMedication(null);
-  };
-
-  // Helper to display special instructions
-  const hasSpecialInstructions = (medication: Medication) => {
-    return medication.instructions && medication.instructions.trim() !== '';
   };
 
   return (
@@ -249,135 +94,22 @@ export default function MedicationSchedule({
                   <Button className="mt-4" onClick={() => navigate("/scan")}>Add Medication</Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10">#</TableHead>
-                        <TableHead>Medication</TableHead>
-                        <TableHead className="w-[120px]">Morning</TableHead>
-                        <TableHead className="w-[120px]">Noon</TableHead>
-                        <TableHead className="w-[120px]">Evening</TableHead>
-                        <TableHead className="w-[180px]">Dosing Pattern</TableHead>
-                        <TableHead className="w-[120px] text-right">Status</TableHead>
-                        <TableHead className="w-[100px] text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {medications
-                        .sort((a, b) => a.time?.localeCompare(b.time || "") || 0)
-                        .map((med, index) => (
-                          <TableRow key={med.id} className={hasSpecialInstructions(med) ? "border-l-4 border-l-amber-400" : ""}>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center">
-                                <ListOrdered className="h-4 w-4 text-gray-400 mr-2" />
-                                {index + 1}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col">
-                                <div className="font-medium flex items-center gap-2">
-                                  <Pill className="h-4 w-4 text-medsnap-blue" />
-                                  {getMedicationName(med)}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {med.dosage || "No dosage specified"}
-                                </div>
-                                {hasSpecialInstructions(med) && (
-                                  <div className="flex items-center mt-1 bg-amber-50 p-1 rounded text-xs text-amber-800">
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    <span>{med.instructions}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>{getTimingDisplay(med, 'morning')}</TableCell>
-                            <TableCell>{getTimingDisplay(med, 'afternoon')}</TableCell>
-                            <TableCell>{getTimingDisplay(med, 'evening')}</TableCell>
-                            <TableCell>
-                              <div className="flex items-start">
-                                <span className="text-sm font-medium">{getDosingPatternText(med)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {getStatusComponent(med)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                                  onClick={() => handleEditClick(med)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                  onClick={() => handleDelete(med.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <MedicationTable 
+                  medications={medications}
+                  onMarkAsTaken={onMarkAsTaken}
+                  onMarkAsMissed={onMarkAsMissed}
+                  onDelete={handleDelete}
+                  onEdit={handleEditClick}
+                />
               )}
             </TabsContent>
             
             <TabsContent value="weekly" className="mt-0">
-              <div className="bg-gray-50 p-6 rounded-lg text-center">
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Weekly View</h3>
-                <p className="text-gray-500 mb-4">
-                  Track your medications over the week at a glance
-                </p>
-                <div className="grid grid-cols-7 gap-2 mb-4">
-                  {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
-                    <div key={i} className="text-xs font-medium text-gray-500">
-                      {day}
-                    </div>
-                  ))}
-                  {Array(7).fill(0).map((_, i) => (
-                    <div 
-                      key={i} 
-                      className={`h-16 border rounded-md ${
-                        i === 2 ? 'bg-white border-medsnap-blue' : 'bg-white'
-                      } flex flex-col justify-center items-center`}
-                    >
-                      <div className="text-xs">{i + 1}</div>
-                      <div className="h-1.5 w-1.5 rounded-full bg-green-500 mt-1"></div>
-                    </div>
-                  ))}
-                </div>
-                <Button className="bg-medsnap-blue hover:bg-blue-600">
-                  View Detailed Weekly Report
-                </Button>
-              </div>
+              <MedicationWeeklyView />
             </TabsContent>
             
             <TabsContent value="monthly" className="mt-0">
-              <div className="bg-gray-50 p-6 rounded-lg text-center">
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Monthly View</h3>
-                <p className="text-gray-500 mb-4">
-                  See your monthly medication adherence statistics
-                </p>
-                <div className="flex justify-center mb-6">
-                  <div className="w-32 h-32 rounded-full border-8 border-medsnap-blue flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold">87%</div>
-                      <div className="text-xs text-gray-500">Adherence</div>
-                    </div>
-                  </div>
-                </div>
-                <Button className="bg-medsnap-blue hover:bg-blue-600">
-                  Generate Monthly Report
-                </Button>
-              </div>
+              <MedicationMonthlyView />
             </TabsContent>
           </Tabs>
         </CardContent>

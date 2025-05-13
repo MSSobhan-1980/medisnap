@@ -11,7 +11,8 @@ import {
 } from '@/services/reminderService';
 import { useReminderSubscription } from './useReminderSubscription';
 
-export { MedicationReminder } from '@/types/reminders';
+// Change from "export { MedicationReminder }" to "export type { MedicationReminder }"
+export type { MedicationReminder } from '@/types/reminders';
 
 export function useReminders(family_member_id?: string | null) {
   const { user, activeMember, aiLifestyleUserId } = useAuth();

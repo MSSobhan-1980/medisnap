@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import * as React from "react";
 
@@ -12,6 +11,8 @@ export type ToastProps = {
   duration?: number;
   variant?: "default" | "destructive";
   dismiss: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export type ToastState = {
@@ -40,7 +41,7 @@ type ActionType = typeof actionTypes;
 type Action =
   | {
       type: ActionType["ADD_TOAST"];
-      toast: Omit<ToastProps, "id" | "dismiss">;
+      toast: Omit<ToastProps, "id" | "dismiss" | "open" | "onOpenChange">;
     }
   | {
       type: ActionType["UPDATE_TOAST"];
@@ -68,7 +69,12 @@ const reducer = (state: State, action: Action): State => {
         ...state,
         toasts: [
           ...state.toasts,
-          { ...action.toast, id: genId(), dismiss: () => {} },
+          { 
+            ...action.toast,
+            id: genId(),
+            dismiss: () => {},
+            open: true
+          },
         ].slice(-TOAST_LIMIT),
       };
 
@@ -135,7 +141,8 @@ function dispatch(action: Action) {
   });
 }
 
-type Toast = Omit<ToastProps, "id" | "dismiss">;
+// Update type to match the expected input in ADD_TOAST action
+type Toast = Omit<ToastProps, "id" | "dismiss" | "open" | "onOpenChange">;
 
 function toast({ ...props }: Toast) {
   const id = genId();
@@ -152,11 +159,7 @@ function toast({ ...props }: Toast) {
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
-      },
+      // Remove id from here as it's no longer part of the expected type
     },
   });
 
@@ -208,4 +211,3 @@ toast.info = (title: string, props?: Omit<ToastProps, "title" | "id" | "dismiss"
 };
 
 export { useToast, toast };
-

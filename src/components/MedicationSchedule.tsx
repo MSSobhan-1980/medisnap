@@ -45,98 +45,64 @@ export default function MedicationSchedule({
   // Format date for display
   const formattedDate = date ? format(date, "PPP") : "";
   
-  // Get timing display
-  const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
-    console.log(`Checking dosing pattern for ${medication.name}, period: ${period}`);
+  // Get dosing pattern from the medication notes or timing field
+  const getDosingPattern = (medication: Medication): [number, number, number] => {
+    console.log(`Getting dosing pattern for ${medication.name}:`, medication.notes);
     
-    // Parse dosing pattern from notes
-    const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d\+\d\+\d)/);
-    console.log("Dosing pattern match:", dosingPatternMatch);
+    // Try to extract from notes using the pattern "Dosing pattern: 1+0+0"
+    const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d+)\+(\d+)\+(\d+)/);
     
     if (dosingPatternMatch) {
-      const dosingPattern = dosingPatternMatch[1];
-      console.log("Extracted dosing pattern:", dosingPattern);
-      
-      const [morning, afternoon, evening] = dosingPattern.split("+").map(Number);
-      
-      const shouldTakeMorning = morning > 0 && period === 'morning';
-      const shouldTakeAfternoon = afternoon > 0 && period === 'afternoon';
-      const shouldTakeEvening = evening > 0 && period === 'evening';
-      
-      console.log(`Should take in ${period}:`, 
-        period === 'morning' ? shouldTakeMorning : 
-        period === 'afternoon' ? shouldTakeAfternoon : 
-        shouldTakeEvening
-      );
-      
-      // Get the appropriate time for this period
-      let timeDisplay = "";
-      if (period === 'morning' && shouldTakeMorning) {
-        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Morning";
-      } else if (period === 'afternoon' && shouldTakeAfternoon) {
-        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Noon";
-      } else if (period === 'evening' && shouldTakeEvening) {
-        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Evening";
-      }
-      
-      // If should take during this period, show check mark and time
-      if (shouldTakeMorning && period === 'morning' || 
-          shouldTakeAfternoon && period === 'afternoon' || 
-          shouldTakeEvening && period === 'evening') {
-        
-        const timingText = medication.timing ? 
-          medication.timing.replace('_', ' ') : '';
-        
-        let icon;
-        if (period === 'morning') {
-          icon = <Sun className="h-4 w-4 mr-1 text-yellow-500" />;
-        } else if (period === 'afternoon') {
-          icon = <Circle className="h-4 w-4 mr-1 text-orange-500" />;
-        } else {
-          icon = <Moon className="h-4 w-4 mr-1 text-blue-500" />;
-        }
-        
-        return (
-          <div className="flex flex-col items-start">
-            <div className="flex items-center">
-              {icon}
-              <Check className="h-4 w-4 text-green-500" />
-              {timeDisplay && (
-                <span className="text-gray-600 text-sm ml-1">{timeDisplay}</span>
-              )}
-            </div>
-            {medication.timing && (
-              <Badge variant="outline" className="mt-1 text-xs">
-                {timingText}
-              </Badge>
-            )}
-          </div>
-        );
-      }
-      
+      const morning = parseInt(dosingPatternMatch[1]);
+      const noon = parseInt(dosingPatternMatch[2]);
+      const evening = parseInt(dosingPatternMatch[3]);
+      console.log(`Extracted dosing pattern: [${morning}, ${noon}, ${evening}]`);
+      return [morning, noon, evening];
+    }
+    
+    // If no dosing pattern in notes, check the timing field
+    if (medication.timing) {
+      if (medication.timing === 'morning') return [1, 0, 0];
+      if (medication.timing === 'afternoon') return [0, 1, 0]; 
+      if (medication.timing === 'evening') return [0, 0, 1];
+    }
+    
+    // If no specific pattern, make a best guess based on time
+    if (medication.time) {
+      const hour = parseInt(medication.time.split(':')[0], 10);
+      if (hour >= 5 && hour < 12) return [1, 0, 0]; // Morning
+      if (hour >= 12 && hour < 17) return [0, 1, 0]; // Noon
+      return [0, 0, 1]; // Evening
+    }
+    
+    console.log("No dosing pattern found, defaulting to [0, 0, 0]");
+    return [0, 0, 0];
+  };
+  
+  // Get timing display for a specific period
+  const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
+    const [morning, noon, evening] = getDosingPattern(medication);
+    
+    const shouldTake = 
+      (period === 'morning' && morning > 0) ||
+      (period === 'afternoon' && noon > 0) ||
+      (period === 'evening' && evening > 0);
+    
+    if (!shouldTake) {
       return <div className="text-gray-300">-</div>;
     }
     
-    // Fallback to time-based check if no dosing pattern
-    if (!medication.time) return <div className="text-gray-300">-</div>;
+    // Get appropriate time label
+    let timeDisplay = "";
+    if (period === 'morning') {
+      timeDisplay = "Morning";
+    } else if (period === 'afternoon') {
+      timeDisplay = "Noon";
+    } else {
+      timeDisplay = "Evening";
+    }
     
-    const hour = parseInt(medication.time.split(':')[0], 10);
-    const isMorning = hour >= 5 && hour < 12;
-    const isAfternoon = hour >= 12 && hour < 17;
-    const isEvening = hour >= 17 || hour < 5;
-    
-    // Check if medication should be taken during this period
-    const isInPeriod = 
-      (period === 'morning' && isMorning) ||
-      (period === 'afternoon' && isAfternoon) ||
-      (period === 'evening' && isEvening);
-    
-    if (!isInPeriod) return <div className="text-gray-300">-</div>;
-    
-    // Show time with timing if available
-    const timingText = medication.timing ? 
-      medication.timing.replace('_', ' ') : '';
-    
+    // Get icon for the period
     let icon;
     if (period === 'morning') {
       icon = <Sun className="h-4 w-4 mr-1 text-yellow-500" />;
@@ -146,11 +112,16 @@ export default function MedicationSchedule({
       icon = <Moon className="h-4 w-4 mr-1 text-blue-500" />;
     }
     
+    // Show timing with additional info
+    const timingText = medication.timing ? 
+      medication.timing.replace('_', ' ') : '';
+    
     return (
       <div className="flex flex-col items-start">
         <div className="flex items-center">
           {icon}
-          <span className="ml-1">{medication.time}</span>
+          <Check className="h-4 w-4 text-green-500" />
+          <span className="text-gray-600 text-sm ml-1">{timeDisplay}</span>
         </div>
         {medication.timing && (
           <Badge variant="outline" className="mt-1 text-xs">
@@ -163,25 +134,23 @@ export default function MedicationSchedule({
   
   // Get dosing pattern as readable text
   const getDosingPatternText = (medication: Medication) => {
-    console.log("Getting dosing pattern text for:", medication.name, medication.notes);
-    const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d\+\d\+\d)/);
-    
-    if (!dosingPatternMatch) return null;
-    
-    const dosingPattern = dosingPatternMatch[1];
-    console.log("Extracted pattern:", dosingPattern);
+    const [morning, noon, evening] = getDosingPattern(medication);
     
     // Map specific patterns to their descriptions
-    if (dosingPattern === "1+0+0") return "Morning";
-    if (dosingPattern === "0+1+0") return "Noon";
-    if (dosingPattern === "0+0+1") return "Evening";
-    if (dosingPattern === "1+1+0") return "Morning & Noon";
-    if (dosingPattern === "1+0+1") return "Morning & Evening";
-    if (dosingPattern === "0+1+1") return "Noon & Evening";
-    if (dosingPattern === "1+1+1") return "Morning, Noon & Evening";
+    if (morning === 1 && noon === 0 && evening === 0) return "Morning";
+    if (morning === 0 && noon === 1 && evening === 0) return "Noon";
+    if (morning === 0 && noon === 0 && evening === 1) return "Evening";
+    if (morning === 1 && noon === 1 && evening === 0) return "Morning & Noon";
+    if (morning === 1 && noon === 0 && evening === 1) return "Morning & Evening";
+    if (morning === 0 && noon === 1 && evening === 1) return "Noon & Evening";
+    if (morning === 1 && noon === 1 && evening === 1) return "Morning, Noon & Evening";
     
-    // Return the pattern itself if it doesn't match a predefined description
-    return dosingPattern;
+    // If nothing matches, show the pattern
+    if (morning || noon || evening) {
+      return `${morning}+${noon}+${evening}`;
+    }
+    
+    return null;
   };
   
   // Display a placeholder if medication name is empty

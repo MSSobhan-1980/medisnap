@@ -1,5 +1,5 @@
 
-import { ListOrdered, Pill, FileText, Edit, Trash2 } from "lucide-react";
+import { ListOrdered, Pill, FileText, Edit, Trash2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -13,6 +13,7 @@ import { Medication } from "@/types/medication";
 import { MedicationTimingDisplay } from "./MedicationTimingDisplay";
 import { MedicationStatus } from "./MedicationStatus";
 import { getMedicationName, getDosingPatternText, hasSpecialInstructions } from "@/utils/medicationUtils";
+import { Badge } from "@/components/ui/badge";
 
 interface MedicationTableProps {
   medications: Medication[];
@@ -20,6 +21,8 @@ interface MedicationTableProps {
   onMarkAsMissed: (medicationId: string) => Promise<void>;
   onDelete: (medicationId: string) => Promise<void>;
   onEdit: (medication: Medication) => void;
+  onManageReminders?: (medicationId: string) => void;
+  medicationsWithReminders?: Set<string>;
 }
 
 export function MedicationTable({ 
@@ -27,7 +30,9 @@ export function MedicationTable({
   onMarkAsTaken, 
   onMarkAsMissed,
   onDelete,
-  onEdit
+  onEdit,
+  onManageReminders,
+  medicationsWithReminders = new Set()
 }: MedicationTableProps) {
   const sortedMedications = [...medications].sort((a, b) => 
     a.time?.localeCompare(b.time || "") || 0
@@ -45,7 +50,7 @@ export function MedicationTable({
             <TableHead className="w-[120px]">Evening</TableHead>
             <TableHead className="w-[180px]">Dosing Pattern</TableHead>
             <TableHead className="w-[120px] text-right">Status</TableHead>
-            <TableHead className="w-[100px] text-center">Actions</TableHead>
+            <TableHead className="w-[140px] text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -62,6 +67,12 @@ export function MedicationTable({
                   <div className="font-medium flex items-center gap-2">
                     <Pill className="h-4 w-4 text-medsnap-blue" />
                     {getMedicationName(med)}
+                    {medicationsWithReminders.has(med.id) && (
+                      <Badge variant="outline" className="bg-blue-50 border-blue-200">
+                        <Bell className="h-3 w-3 mr-1 text-blue-500" />
+                        Reminder
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-sm text-gray-500">
                     {med.dosage || "No dosage specified"}
@@ -97,11 +108,23 @@ export function MedicationTable({
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-center gap-1">
+                  {onManageReminders && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                      onClick={() => onManageReminders(med.id)}
+                      title="Manage reminders"
+                    >
+                      <Bell className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                     onClick={() => onEdit(med)}
+                    title="Edit medication"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -110,6 +133,7 @@ export function MedicationTable({
                     size="sm"
                     className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     onClick={() => onDelete(med.id)}
+                    title="Delete medication"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

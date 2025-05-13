@@ -13,6 +13,9 @@ import EditMedicationForm from "./EditMedicationForm";
 import { MedicationTable } from "./medication/MedicationTable";
 import { MedicationWeeklyView } from "./medication/MedicationWeeklyView";
 import { MedicationMonthlyView } from "./medication/MedicationMonthlyView";
+import MedicationReminderForm from "./MedicationReminderForm";
+import { Bell } from "lucide-react";
+import { useReminders } from "@/hooks/useReminders";
 
 interface MedicationScheduleProps {
   medications: Medication[];
@@ -34,9 +37,16 @@ export default function MedicationSchedule({
   const [activeTab, setActiveTab] = useState("daily");
   const navigate = useNavigate();
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const [managingReminders, setManagingReminders] = useState<string | null>(null);
+  const { reminders } = useReminders();
   
   // Format date for display
   const formattedDate = date ? format(date, "PPP") : "";
+
+  // Check which medications have reminders
+  const medicationsWithReminders = new Set(
+    reminders.map(reminder => reminder.medication_id)
+  );
 
   const handleDelete = async (medicationId: string) => {
     if (!onDelete) return;
@@ -55,6 +65,10 @@ export default function MedicationSchedule({
 
   const handleEditComplete = () => {
     setEditingMedication(null);
+  };
+
+  const handleManageReminders = (medicationId: string) => {
+    setManagingReminders(medicationId);
   };
 
   return (
@@ -100,6 +114,8 @@ export default function MedicationSchedule({
                   onMarkAsMissed={onMarkAsMissed}
                   onDelete={handleDelete}
                   onEdit={handleEditClick}
+                  onManageReminders={handleManageReminders}
+                  medicationsWithReminders={medicationsWithReminders}
                 />
               )}
             </TabsContent>
@@ -126,6 +142,15 @@ export default function MedicationSchedule({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Reminder management dialog */}
+      {managingReminders && (
+        <MedicationReminderForm
+          medicationId={managingReminders}
+          open={managingReminders !== null}
+          onOpenChange={(open) => !open && setManagingReminders(null)}
+        />
+      )}
     </>
   );
 }

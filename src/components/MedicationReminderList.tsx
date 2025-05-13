@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { Bell, CheckCircle, Clock, CheckIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Clock, AlarmClock, CheckCircle, X, Calendar, CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReminders, MedicationReminder } from "@/hooks/useReminders";
 import { useMedications } from "@/hooks/useMedications";
@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import MedicationReminderForm from "./MedicationReminderForm";
 
 export function MedicationReminderList() {
   const { reminders, loading: remindersLoading, updateReminder, deleteReminder, addReminder } = useReminders();
@@ -15,6 +18,7 @@ export function MedicationReminderList() {
   const [isAddingReminder, setIsAddingReminder] = useState(false);
   const [selectedMedication, setSelectedMedication] = useState("");
   const [reminderTime, setReminderTime] = useState("");
+  const [openMedicationId, setOpenMedicationId] = useState<string | null>(null);
 
   // Map medication IDs to medication names
   const medicationMap = medications.reduce((acc, med) => {
@@ -52,33 +56,41 @@ export function MedicationReminderList() {
   const handleToggleReminder = async (reminder: MedicationReminder) => {
     try {
       await updateReminder(reminder.id, { is_enabled: !reminder.is_enabled });
+      toast.success(reminder.is_enabled ? "Reminder disabled" : "Reminder enabled");
     } catch (error) {
       console.error("Error toggling reminder:", error);
+      toast.error("Failed to toggle reminder");
     }
   };
 
   const handleDeleteReminder = async (reminder: MedicationReminder) => {
     try {
       await deleteReminder(reminder.id);
+      toast.success("Reminder deleted");
     } catch (error) {
       console.error("Error deleting reminder:", error);
+      toast.error("Failed to delete reminder");
     }
   };
 
-  // Get dosing pattern indicators
-  const getDosingPattern = (medicationId: string) => {
-    const medication = medications.find(med => med.id === medicationId);
-    if (!medication || !medication.notes) return [false, false, false];
-    
-    const match = medication.notes.match(/Dosing pattern: (\d)\+(\d)\+(\d)/);
-    if (!match) return [false, false, false];
-    
-    return [
-      match[1] !== "0",
-      match[2] !== "0", 
-      match[3] !== "0"
-    ];
+  // Format time for display (24h to 12h format)
+  const formatTime = (time24h: string) => {
+    const [hours, minutes] = time24h.split(':');
+    const hour = parseInt(hours, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${period}`;
   };
+
+  // Group reminders by medication
+  const remindersByMedication = reminders.reduce((acc, reminder) => {
+    const medId = reminder.medication_id;
+    if (!acc[medId]) {
+      acc[medId] = [];
+    }
+    acc[medId].push(reminder);
+    return acc;
+  }, {} as Record<string, MedicationReminder[]>);
 
   return (
     <Card>
@@ -108,7 +120,7 @@ export function MedicationReminderList() {
                 </label>
                 <select
                   id="medication"
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-medsnap-blue focus:ring focus:ring-medsnap-blue focus:ring-opacity-50 bg-white p-2 text-sm border"
+                  className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 bg-white p-2 text-sm"
                   value={selectedMedication}
                   onChange={(e) => setSelectedMedication(e.target.value)}
                 >
@@ -128,10 +140,9 @@ export function MedicationReminderList() {
                 <input
                   id="time"
                   type="time"
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-medsnap-blue focus:ring focus:ring-medsnap-blue focus:ring-opacity-50 bg-white p-2 text-sm border"
+                  className="w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 bg-white p-2 text-sm"
                   value={reminderTime}
                   onChange={(e) => setReminderTime(e.target.value)}
-                  placeholder="Enter reminder time"
                 />
               </div>
             </div>
@@ -146,55 +157,92 @@ export function MedicationReminderList() {
             </Button>
 
             <div className="mt-4">
-              <h3 className="font-medium mb-2">Scheduled Reminders</h3>
-              {reminders.length === 0 ? (
-                <p className="text-sm text-gray-500">No reminders set</p>
+              <h3 className="font-medium mb-2 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Scheduled Reminders
+              </h3>
+              
+              {Object.keys(remindersByMedication).length === 0 ? (
+                <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-md">
+                  <AlarmClock className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                  <p>No reminders set</p>
+                  <p className="text-sm">Add reminders above to get started</p>
+                </div>
               ) : (
-                <div className="divide-y">
-                  {reminders.map((reminder) => {
-                    const [morningDose, afternoonDose, eveningDose] = getDosingPattern(reminder.medication_id);
+                <div className="space-y-4">
+                  {Object.entries(remindersByMedication).map(([medicationId, medicationReminders]) => {
+                    const medication = medications.find(med => med.id === medicationId);
                     
                     return (
-                      <div key={reminder.id} className="py-3 flex justify-between items-center">
-                        <div>
-                          <p className="font-medium">
-                            {medicationMap[reminder.medication_id] || "Unknown medication"}
-                          </p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <p className="text-sm text-gray-500 flex items-center">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {reminder.reminder_time || "No set time"}
-                            </p>
-                            <div className="flex space-x-1">
-                              <Badge variant={morningDose ? "default" : "outline"} className={morningDose ? "bg-blue-100 text-blue-800 border-blue-200" : "text-gray-500"}>
-                                {morningDose && <CheckIcon className="h-2 w-2 mr-1" />}M
-                              </Badge>
-                              <Badge variant={afternoonDose ? "default" : "outline"} className={afternoonDose ? "bg-amber-100 text-amber-800 border-amber-200" : "text-gray-500"}>
-                                {afternoonDose && <CheckIcon className="h-2 w-2 mr-1" />}A
-                              </Badge>
-                              <Badge variant={eveningDose ? "default" : "outline"} className={eveningDose ? "bg-indigo-100 text-indigo-800 border-indigo-200" : "text-gray-500"}>
-                                {eveningDose && <CheckIcon className="h-2 w-2 mr-1" />}E
-                              </Badge>
-                            </div>
+                      <div key={medicationId} className="bg-gray-50 rounded-md p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="font-medium text-gray-900">
+                            {medication?.name || medicationMap[medicationId] || "Unknown medication"}
+                          </div>
+                          <div>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-8"
+                                  onClick={() => setOpenMedicationId(medicationId)}
+                                >
+                                  Manage
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Manage Reminders</DialogTitle>
+                                </DialogHeader>
+                                <MedicationReminderForm 
+                                  medicationId={medicationId} 
+                                  open={openMedicationId === medicationId}
+                                  onOpenChange={(open) => {
+                                    if (!open) setOpenMedicationId(null);
+                                  }}
+                                />
+                              </DialogContent>
+                            </Dialog>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={reminder.is_enabled ? "text-green-500" : "text-gray-400"}
-                            onClick={() => handleToggleReminder(reminder)}
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500"
-                            onClick={() => handleDeleteReminder(reminder)}
-                          >
-                            &times;
-                          </Button>
+                        
+                        <div className="space-y-2">
+                          {medicationReminders.map(reminder => (
+                            <div 
+                              key={reminder.id} 
+                              className={`flex justify-between items-center p-2 rounded-md ${
+                                reminder.is_enabled ? 'bg-white border border-gray-200' : 'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              <div className="flex items-center">
+                                <Clock className={`h-4 w-4 mr-2 ${reminder.is_enabled ? 'text-blue-500' : 'text-gray-400'}`} />
+                                <span>{formatTime(reminder.reminder_time)}</span>
+                                {!reminder.is_enabled && <Badge variant="outline" className="ml-2">Disabled</Badge>}
+                              </div>
+                              
+                              <div className="flex items-center space-x-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={reminder.is_enabled ? "text-green-500 hover:text-green-700" : "text-gray-400 hover:text-gray-600"}
+                                  onClick={() => handleToggleReminder(reminder)}
+                                  title={reminder.is_enabled ? "Disable reminder" : "Enable reminder"}
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-700"
+                                  onClick={() => handleDeleteReminder(reminder)}
+                                  title="Delete reminder"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     );

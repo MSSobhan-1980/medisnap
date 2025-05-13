@@ -145,12 +145,17 @@ export default function MedicationSchedule({
     if (morning === 0 && noon === 1 && evening === 1) return "Noon & Evening";
     if (morning === 1 && noon === 1 && evening === 1) return "Morning, Noon & Evening";
     
+    // If there are multiple doses in a period
+    if (morning > 1 || noon > 1 || evening > 1) {
+      return `${morning}+${noon}+${evening}`;
+    }
+    
     // If nothing matches, show the pattern
     if (morning || noon || evening) {
       return `${morning}+${noon}+${evening}`;
     }
     
-    return null;
+    return "No pattern";
   };
   
   // Display a placeholder if medication name is empty
@@ -217,6 +222,11 @@ export default function MedicationSchedule({
     setEditingMedication(null);
   };
 
+  // Helper to display special instructions
+  const hasSpecialInstructions = (medication: Medication) => {
+    return medication.instructions && medication.instructions.trim() !== '';
+  };
+
   return (
     <>
       <Card className="lg:col-span-2">
@@ -272,7 +282,7 @@ export default function MedicationSchedule({
                       {medications
                         .sort((a, b) => a.time?.localeCompare(b.time || "") || 0)
                         .map((med, index) => (
-                          <TableRow key={med.id}>
+                          <TableRow key={med.id} className={hasSpecialInstructions(med) ? "border-l-4 border-l-amber-400" : ""}>
                             <TableCell className="font-medium">
                               <div className="flex items-center">
                                 <ListOrdered className="h-4 w-4 text-gray-400 mr-2" />
@@ -288,6 +298,12 @@ export default function MedicationSchedule({
                                 <div className="text-sm text-gray-500">
                                   {med.dosage || "No dosage specified"}
                                 </div>
+                                {hasSpecialInstructions(med) && (
+                                  <div className="flex items-center mt-1 bg-amber-50 p-1 rounded text-xs text-amber-800">
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    <span>{med.instructions}</span>
+                                  </div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>{getTimingDisplay(med, 'morning')}</TableCell>
@@ -295,11 +311,7 @@ export default function MedicationSchedule({
                             <TableCell>{getTimingDisplay(med, 'evening')}</TableCell>
                             <TableCell>
                               <div className="flex items-start">
-                                {getDosingPatternText(med) ? (
-                                  <span className="text-sm font-medium">{getDosingPatternText(med)}</span>
-                                ) : (
-                                  <span className="text-sm text-gray-400">No dosing pattern</span>
-                                )}
+                                <span className="text-sm font-medium">{getDosingPatternText(med)}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-right">

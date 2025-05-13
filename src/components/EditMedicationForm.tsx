@@ -49,14 +49,20 @@ export default function EditMedicationForm({ medication, onComplete }: EditMedic
   // Parse dosing pattern from notes if available
   const getDosingPattern = () => {
     if (!medication.notes) return ["0", "0", "0"];
-    const match = medication.notes.match(/Dosing pattern: (\d)\+(\d)\+(\d)/);
-    if (match) {
-      return [match[1], match[2], match[3]];
+    
+    const dosingPatternMatch = medication.notes.match(/Dosing pattern: (\d+)\+(\d+)\+(\d+)/);
+    if (dosingPatternMatch) {
+      console.log("Found dosing pattern in notes:", dosingPatternMatch);
+      return [dosingPatternMatch[1], dosingPatternMatch[2], dosingPatternMatch[3]];
     }
+    
+    // Default values if no pattern found
+    console.log("No dosing pattern found in notes, defaulting to 0+0+0");
     return ["0", "0", "0"];
   };
 
   const [morning, afternoon, evening] = getDosingPattern();
+  console.log(`Parsed dosing pattern: Morning=${morning}, Afternoon=${afternoon}, Evening=${evening}`);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,6 +86,7 @@ export default function EditMedicationForm({ medication, onComplete }: EditMedic
       
       // Create dosing pattern string from morning, afternoon, evening values
       const dosingPattern = `${data.morning}+${data.afternoon}+${data.evening}`;
+      console.log("Setting new dosing pattern:", dosingPattern);
       
       // Prepare the medication data
       const medicationData = {
@@ -94,6 +101,7 @@ export default function EditMedicationForm({ medication, onComplete }: EditMedic
         notes: `Dosing pattern: ${dosingPattern}`,
       };
 
+      console.log("Updating medication with data:", medicationData);
       await updateMedication(medication.id, medicationData);
       toast.success("Medication updated successfully");
       onComplete();
@@ -169,7 +177,7 @@ export default function EditMedicationForm({ medication, onComplete }: EditMedic
             name="afternoon"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Afternoon Dose</FormLabel>
+                <FormLabel>Noon Dose</FormLabel>
                 <FormControl>
                   <Select 
                     value={field.value} 

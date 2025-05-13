@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +59,9 @@ export default function ScanPage() {
   const [addingMedication, setAddingMedication] = useState(false);
   const [medicationAdded, setMedicationAdded] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
   const [manualForm, setManualForm] = useState<MedicationFormData>({
     name: "",
     dosage: "",
@@ -85,6 +88,13 @@ export default function ScanPage() {
     }
   };
 
+  const handleCameraClick = () => {
+    // Trigger the camera input
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+
   const clearImage = () => {
     setImage(null);
     setOcrResult(null);
@@ -92,6 +102,10 @@ export default function ScanPage() {
     setExtractedMedications([]);
     setError(null);
     setMedicationAdded(false);
+    
+    // Reset file inputs
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   function getBase64Content(dataUrl: string) {
@@ -240,7 +254,7 @@ export default function ScanPage() {
             <CardContent>
               <MedicationImageUpload />
               {!image ? (
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50">
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50 mt-6">
                   <div className="mb-4">
                     <Upload className="mx-auto h-12 w-12 text-gray-400" />
                   </div>
@@ -252,19 +266,29 @@ export default function ScanPage() {
                     <div className="flex flex-col sm:flex-row gap-2 justify-center">
                       <Button 
                         variant="outline"
-                        onClick={() => document.getElementById('file-upload')?.click()}
+                        onClick={() => fileInputRef.current?.click()}
                       >
                         <Upload className="mr-2 h-4 w-4" /> Choose File
                       </Button>
                       <Button
                         variant="outline"
+                        onClick={handleCameraClick}
                       >
                         <Camera className="mr-2 h-4 w-4" /> Take Photo
                       </Button>
                       <input
                         id="file-upload"
+                        ref={fileInputRef}
                         type="file"
                         accept="image/*"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
                         className="hidden"
                         onChange={handleFileChange}
                       />

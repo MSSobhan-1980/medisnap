@@ -47,23 +47,34 @@ export default function MedicationSchedule({
   
   // Get timing display
   const getTimingDisplay = (medication: Medication, period: 'morning' | 'afternoon' | 'evening') => {
+    console.log(`Checking dosing pattern for ${medication.name}, period: ${period}`);
+    
     // Parse dosing pattern from notes
     const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d\+\d\+\d)/);
+    console.log("Dosing pattern match:", dosingPatternMatch);
     
     if (dosingPatternMatch) {
       const dosingPattern = dosingPatternMatch[1];
+      console.log("Extracted dosing pattern:", dosingPattern);
+      
       const [morning, afternoon, evening] = dosingPattern.split("+").map(Number);
       
       const shouldTakeMorning = morning > 0 && period === 'morning';
       const shouldTakeAfternoon = afternoon > 0 && period === 'afternoon';
       const shouldTakeEvening = evening > 0 && period === 'evening';
       
+      console.log(`Should take in ${period}:`, 
+        period === 'morning' ? shouldTakeMorning : 
+        period === 'afternoon' ? shouldTakeAfternoon : 
+        shouldTakeEvening
+      );
+      
       // Get the appropriate time for this period
       let timeDisplay = "";
       if (period === 'morning' && shouldTakeMorning) {
         timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Morning";
       } else if (period === 'afternoon' && shouldTakeAfternoon) {
-        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Afternoon";
+        timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Noon";
       } else if (period === 'evening' && shouldTakeEvening) {
         timeDisplay = medication.time && medication.time !== "08:00" ? medication.time : "Evening";
       }
@@ -152,11 +163,13 @@ export default function MedicationSchedule({
   
   // Get dosing pattern as readable text
   const getDosingPatternText = (medication: Medication) => {
+    console.log("Getting dosing pattern text for:", medication.name, medication.notes);
     const dosingPatternMatch = medication.notes?.match(/Dosing pattern: (\d\+\d\+\d)/);
     
     if (!dosingPatternMatch) return null;
     
     const dosingPattern = dosingPatternMatch[1];
+    console.log("Extracted pattern:", dosingPattern);
     
     // Map specific patterns to their descriptions
     if (dosingPattern === "1+0+0") return "Morning";

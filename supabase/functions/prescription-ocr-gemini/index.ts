@@ -16,10 +16,12 @@ serve(async (req) => {
   try {
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
+      console.error('OPENAI_API_KEY not configured');
       throw new Error('OPENAI_API_KEY not configured');
     }
 
-    // Parse request body once
+    console.log('OpenAI API Key found, processing request...');
+
     const requestBody = await req.json();
     const { imageUrl, userId, scanId } = requestBody;
 
@@ -56,17 +58,23 @@ serve(async (req) => {
         .eq('id', actualScanId);
     }
 
-    // Fetch image and convert to base64
-    console.log('Fetching image from:', imageUrl);
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+    // Extract base64 content from data URL
+    let base64Image;
+    if (imageUrl.startsWith('data:image/')) {
+      base64Image = imageUrl.split(',')[1];
+    } else {
+      // If it's a URL, fetch the image and convert to base64
+      console.log('Fetching image from URL:', imageUrl);
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+      }
+      
+      const imageBuffer = await imageResponse.arrayBuffer();
+      base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
     }
-    
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
 
-    // Prepare OpenAI API request
+    // Prepare OpenAI API request with GPT-4o
     const openaiPayload = {
       model: "gpt-4o",
       messages: [
@@ -104,7 +112,7 @@ serve(async (req) => {
     };
 
     // Call OpenAI API
-    console.log('Calling OpenAI API...');
+    console.log('Calling OpenAI API with GPT-4o...');
     const openaiResponse = await fetch(
       'https://api.openai.com/v1/chat/completions',
       {

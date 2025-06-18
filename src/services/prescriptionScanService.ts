@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { uploadImage } from '@/services/secureStorageService';
 import { MedicationFormData } from '@/types/medication';
@@ -53,6 +52,8 @@ export const processPrescriptionWithOCR = async (
   userId: string
 ): Promise<any> => {
   try {
+    console.log('Invoking prescription-ocr-gemini function with:', { scanId, imageUrl, userId });
+    
     const response = await supabase.functions.invoke('prescription-ocr-gemini', {
       body: {
         scanId,
@@ -61,8 +62,15 @@ export const processPrescriptionWithOCR = async (
       }
     });
 
+    console.log('Edge function response:', response);
+
     if (response.error) {
-      throw response.error;
+      console.error('Edge function error:', response.error);
+      throw new Error(`Edge function error: ${response.error.message || 'Unknown error'}`);
+    }
+
+    if (!response.data) {
+      throw new Error('No data returned from edge function');
     }
 
     return response.data;

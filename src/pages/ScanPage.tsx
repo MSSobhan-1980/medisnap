@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { useState, useRef } from "react";
 import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
@@ -147,30 +146,51 @@ export default function ScanPage() {
       // Create scan record
       const scan = await createPrescriptionScan(user.id, imageUrl);
       
-      toast("Processing with AI...");
+      toast("Processing with AI... This may take a moment");
       
-      // Process with OCR
-      const result = await processPrescriptionWithOCR(scan.id, imageUrl, user.id);
-      
-      if (result.success) {
-        setOcrResult(result.extractedText);
-        setAiResult(result);
+      // Process with OCR - with better error handling
+      try {
+        const result = await processPrescriptionWithOCR(scan.id, imageUrl, user.id);
         
-        // Convert to medication format
-        const medications = convertScanToMedications({
-          extracted_medications: result.extractedMedications
-        } as any);
+        if (result && result.success) {
+          setOcrResult(result.extractedText || 'Text extracted successfully');
+          setAiResult(result);
+          
+          // Convert to medication format
+          if (result.extractedMedications && result.extractedMedications.length > 0) {
+            const medications = convertScanToMedications({
+              extracted_medications: result.extractedMedications
+            } as any);
+            
+            setExtractedMedications(medications);
+            toast.success("Prescription processed successfully!");
+          } else {
+            toast.warning("No medications found in the prescription. Please try manual entry.");
+          }
+        } else {
+          throw new Error(result?.error || 'Failed to process prescription');
+        }
+      } catch (ocrError: any) {
+        console.error("OCR processing error:", ocrError);
         
-        setExtractedMedications(medications);
-        toast.success("Prescription processed successfully!");
-      } else {
-        throw new Error(result.error || 'Failed to process prescription');
+        // Provide more specific error messages
+        if (ocrError.message?.includes('fetch')) {
+          setError("Network error: Unable to connect to the processing service. Please check your internet connection and try again.");
+        } else if (ocrError.message?.includes('timeout')) {
+          setError("Processing timeout: The image took too long to process. Please try with a clearer or smaller image.");
+        } else if (ocrError.message?.includes('API')) {
+          setError("API error: There's an issue with the AI processing service. Please try manual entry instead.");
+        } else {
+          setError(`Processing failed: ${ocrError.message || 'Unknown error occurred'}`);
+        }
+        
+        toast.error("Failed to process prescription. You can still add medications manually.");
       }
       
     } catch (err: any) {
       console.error("Error scanning:", err);
-      setError(err?.message || "Failed to extract prescription info.");
-      toast.error(err?.message || "Failed to extract prescription info.");
+      setError(err?.message || "Failed to process prescription.");
+      toast.error("Upload failed. Please try again or use manual entry.");
     } finally {
       setScanning(false);
     }
@@ -290,9 +310,13 @@ export default function ScanPage() {
                     {error && (
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
+                        <AlertTitle>Processing Error</AlertTitle>
                         <AlertDescription>
                           {error}
+                          <br />
+                          <span className="text-sm mt-2 block">
+                            You can still add medications manually using the "Manual Entry" tab.
+                          </span>
                         </AlertDescription>
                       </Alert>
                     )}

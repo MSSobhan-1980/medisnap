@@ -13,6 +13,8 @@ export const useReminderSubscription = (
   useEffect(() => {
     if (!userId) return;
 
+    // Create a unique channel name to avoid conflicts
+    const channelName = `reminders-${userId}-${familyMemberId || 'null'}-${Date.now()}`;
     const filter = familyMemberId 
       ? `user_id=eq.${userId}&family_member_id=eq.${familyMemberId}`
       : `user_id=eq.${userId}&family_member_id=is.null`;
@@ -20,7 +22,7 @@ export const useReminderSubscription = (
     console.log("Setting up reminders subscription with filter:", filter);
     
     const channel = supabase
-      .channel('reminders-changes')
+      .channel(channelName)
       .on('postgres_changes', 
         {
           event: '*',
@@ -57,7 +59,7 @@ export const useReminderSubscription = (
 
     return () => {
       console.log("Cleaning up reminders subscription");
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [userId, familyMemberId, onUpdate]);
 };

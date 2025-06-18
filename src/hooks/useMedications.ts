@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Medication } from '@/types/medication';
@@ -42,6 +41,8 @@ export function useMedications() {
   useEffect(() => {
     if (!user) return;
 
+    // Create a unique channel name to avoid conflicts
+    const channelName = `medications-${user.id}-${activeMember?.id || 'self'}-${Date.now()}`;
     const filter = activeMember 
       ? `user_id=eq.${user.id}&family_member_id=eq.${activeMember.id}`
       : `user_id=eq.${user.id}&family_member_id=is.null`;
@@ -49,7 +50,7 @@ export function useMedications() {
     console.log("Setting up real-time subscription for medications with filter:", filter);
     
     const channel = supabase
-      .channel('medications-changes')
+      .channel(channelName)
       .on('postgres_changes', 
         {
           event: '*',
@@ -72,7 +73,7 @@ export function useMedications() {
 
     return () => {
       console.log("Cleaning up real-time subscription");
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [user, activeMember]);
 

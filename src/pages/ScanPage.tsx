@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
+import GeminiApiKeyInput from "@/components/GeminiApiKeyInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { addMedication, addMultipleMedications, processAIMedicationData } from "@/services/medicationService";
+import { processImageWithGemini, getStoredGeminiApiKey } from "@/services/clientOcrService";
 import { MedicationFormData, OcrMedicationData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 
@@ -27,6 +29,7 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [addingMedication, setAddingMedication] = useState(false);
   const [medicationAdded, setMedicationAdded] = useState(false);
+  const [hasGeminiKey, setHasGeminiKey] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -74,10 +77,6 @@ export default function ScanPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
-
-  function getBase64Content(dataUrl: string) {
-    return dataUrl.substring(dataUrl.indexOf(",") + 1);
-  }
 
   const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -128,9 +127,25 @@ export default function ScanPage() {
     try {
       toast("Processing prescription with AI...");
       
-      // Try the new edge function first
+      // Try client-side Gemini first if API key is available
+      if (hasGeminiKey && getStoredGeminiApiKey()) {
+        console.log("Using client-side Gemini OCR...");
+        const geminiResult = await processImageWithGemini(image, user.id);
+        
+        if (geminiResult.success) {
+          setOcrResult(geminiResult.extractedText);
+          setExtractedMedications(geminiResult.extractedMedications);
+          toast.success("Prescription processed successfully with Gemini!");
+          return;
+        } else {
+          console.error("Gemini failed:", geminiResult.error);
+          toast.warning("Gemini processing failed, trying edge functions...");
+        }
+      }
+
+      // Fallback to edge functions
       try {
-        console.log("Trying new OCR function...");
+        console.log("Trying edge function OCR...");
         const { data, error } = await supabase.functions.invoke('prescription-ocr-openai', {
           body: {
             imageData: image,
@@ -139,12 +154,12 @@ export default function ScanPage() {
         });
 
         if (error) {
-          console.error("New OCR function error:", error);
+          console.error("Edge function error:", error);
           throw error;
         }
 
         if (data && data.success) {
-          console.log("New OCR Results:", data);
+          console.log("Edge function OCR Results:", data);
           setOcrResult(data.extractedText);
           setAiResult(data.extractedMedications);
           toast.success("Prescription processed successfully!");
@@ -162,44 +177,9 @@ export default function ScanPage() {
           }
           return;
         }
-      } catch (newFunctionError) {
-        console.error("New function failed, trying fallback:", newFunctionError);
-        
-        // Fallback to original function
-        const { data, error } = await supabase.functions.invoke('prescription-ocr-gemini', {
-          body: {
-            imageUrl: image,
-            userId: user.id,
-            scanId: crypto.randomUUID()
-          }
-        });
-
-        if (error) {
-          console.error("Fallback function error:", error);
-          throw new Error(error.message || "Both OCR functions failed");
-        }
-
-        console.log("Fallback OCR Results:", data);
-        
-        if (data.success) {
-          setOcrResult(data.extractedText);
-          setAiResult(data.extractedMedications);
-          toast.success("Prescription processed successfully!");
-          
-          if (data.extractedMedications && data.extractedMedications.length > 0) {
-            const medicationData = await processAIMedicationData(data.extractedMedications);
-            setExtractedMedications(medicationData);
-            console.log("Processed medication data:", medicationData);
-            
-            if (medicationData.length === 0) {
-              toast.warning("No medications could be detected. Please try again or enter manually.");
-            }
-          } else {
-            toast.warning("No medications could be detected. Please try again or enter manually.");
-          }
-        } else {
-          throw new Error(data.error || "Failed to extract prescription info.");
-        }
+      } catch (edgeFunctionError) {
+        console.error("Edge function failed:", edgeFunctionError);
+        throw new Error("All OCR methods failed. Please check your API configuration or try manual entry.");
       }
     } catch (err: any) {
       console.error("Error scanning:", err);
@@ -270,6 +250,8 @@ export default function ScanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <GeminiApiKeyInput onApiKeySet={setHasGeminiKey} />
+              
               <MedicationImageUpload />
               {!image ? (
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50 mt-6">

@@ -127,43 +127,79 @@ export default function ScanPage() {
 
     try {
       toast("Processing prescription with AI...");
-      const imageBase64 = getBase64Content(image);
       
-      // Use Supabase functions.invoke instead of direct fetch
-      const { data, error } = await supabase.functions.invoke('prescription-ocr-gemini', {
-        body: {
-          imageUrl: image,
-          userId: user.id,
-          scanId: crypto.randomUUID() // Generate a temporary scan ID
+      // Try the new edge function first
+      try {
+        console.log("Trying new OCR function...");
+        const { data, error } = await supabase.functions.invoke('prescription-ocr-openai', {
+          body: {
+            imageData: image,
+            userId: user.id
+          }
+        });
+
+        if (error) {
+          console.error("New OCR function error:", error);
+          throw error;
         }
-      });
 
-      if (error) {
-        console.error("Supabase function error:", error);
-        throw new Error(error.message || "Failed to process prescription");
-      }
-
-      console.log("OCR Results:", data);
-      
-      if (data.success) {
-        setOcrResult(data.extractedText);
-        setAiResult(data.extractedMedications);
-        toast.success("Prescription processed successfully!");
-        
-        // Process the extracted medication data
-        if (data.extractedMedications && data.extractedMedications.length > 0) {
-          const medicationData = await processAIMedicationData(data.extractedMedications);
-          setExtractedMedications(medicationData);
-          console.log("Processed medication data:", medicationData);
+        if (data && data.success) {
+          console.log("New OCR Results:", data);
+          setOcrResult(data.extractedText);
+          setAiResult(data.extractedMedications);
+          toast.success("Prescription processed successfully!");
           
-          if (medicationData.length === 0) {
+          if (data.extractedMedications && data.extractedMedications.length > 0) {
+            const medicationData = await processAIMedicationData(data.extractedMedications);
+            setExtractedMedications(medicationData);
+            console.log("Processed medication data:", medicationData);
+            
+            if (medicationData.length === 0) {
+              toast.warning("No medications could be detected. Please try again or enter manually.");
+            }
+          } else {
+            toast.warning("No medications could be detected. Please try again or enter manually.");
+          }
+          return;
+        }
+      } catch (newFunctionError) {
+        console.error("New function failed, trying fallback:", newFunctionError);
+        
+        // Fallback to original function
+        const { data, error } = await supabase.functions.invoke('prescription-ocr-gemini', {
+          body: {
+            imageUrl: image,
+            userId: user.id,
+            scanId: crypto.randomUUID()
+          }
+        });
+
+        if (error) {
+          console.error("Fallback function error:", error);
+          throw new Error(error.message || "Both OCR functions failed");
+        }
+
+        console.log("Fallback OCR Results:", data);
+        
+        if (data.success) {
+          setOcrResult(data.extractedText);
+          setAiResult(data.extractedMedications);
+          toast.success("Prescription processed successfully!");
+          
+          if (data.extractedMedications && data.extractedMedications.length > 0) {
+            const medicationData = await processAIMedicationData(data.extractedMedications);
+            setExtractedMedications(medicationData);
+            console.log("Processed medication data:", medicationData);
+            
+            if (medicationData.length === 0) {
+              toast.warning("No medications could be detected. Please try again or enter manually.");
+            }
+          } else {
             toast.warning("No medications could be detected. Please try again or enter manually.");
           }
         } else {
-          toast.warning("No medications could be detected. Please try again or enter manually.");
+          throw new Error(data.error || "Failed to extract prescription info.");
         }
-      } else {
-        throw new Error(data.error || "Failed to extract prescription info.");
       }
     } catch (err: any) {
       console.error("Error scanning:", err);

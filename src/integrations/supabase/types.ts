@@ -199,6 +199,7 @@ export type Database = {
           name: string
           notes: string | null
           start_date: string | null
+          status: string | null
           time: string
           timing: string | null
           updated_at: string
@@ -215,6 +216,7 @@ export type Database = {
           name: string
           notes?: string | null
           start_date?: string | null
+          status?: string | null
           time: string
           timing?: string | null
           updated_at?: string
@@ -231,6 +233,7 @@ export type Database = {
           name?: string
           notes?: string | null
           start_date?: string | null
+          status?: string | null
           time?: string
           timing?: string | null
           updated_at?: string

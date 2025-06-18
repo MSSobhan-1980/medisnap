@@ -2,18 +2,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { uploadImage } from '@/services/secureStorageService';
 import { MedicationFormData } from '@/types/medication';
+import { Database } from '@/integrations/supabase/types';
 
-export interface PrescriptionScan {
-  id: string;
-  user_id: string;
-  image_url: string;
-  ocr_text: string | null;
-  ai_analysis: any;
-  extracted_medications: any[];
-  scan_date: string;
-  processing_status: 'pending' | 'processing' | 'completed' | 'failed';
-  created_at: string;
-}
+// Use the actual Supabase type for prescription scans
+export type PrescriptionScan = Database['public']['Tables']['prescription_scans']['Row'];
 
 export const uploadPrescriptionImage = async (file: File, userId: string): Promise<string | null> => {
   try {

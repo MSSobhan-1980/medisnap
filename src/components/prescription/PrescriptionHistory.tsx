@@ -74,6 +74,14 @@ export function PrescriptionHistory() {
     }
   };
 
+  // Helper function to safely check if extracted_medications is an array
+  const getExtractedMedicationsArray = (extractedMedications: any): any[] => {
+    if (Array.isArray(extractedMedications)) {
+      return extractedMedications;
+    }
+    return [];
+  };
+
   if (loading) {
     return (
       <Card>
@@ -109,66 +117,70 @@ export function PrescriptionHistory() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {scans.map((scan) => (
-            <div key={scan.id} className="border rounded-lg p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <FileImage className="h-6 w-6 text-blue-500 mt-1" />
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(scan.processing_status)}
-                      <Badge className={getStatusColor(scan.processing_status)}>
-                        {scan.processing_status}
-                      </Badge>
+          {scans.map((scan) => {
+            const medicationsArray = getExtractedMedicationsArray(scan.extracted_medications);
+            
+            return (
+              <div key={scan.id} className="border rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <FileImage className="h-6 w-6 text-blue-500 mt-1" />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(scan.processing_status || 'pending')}
+                        <Badge className={getStatusColor(scan.processing_status || 'pending')}>
+                          {scan.processing_status || 'pending'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(scan.scan_date).toLocaleDateString()}
+                      </div>
+                      {medicationsArray.length > 0 && (
+                        <p className="text-sm text-gray-600">
+                          Found {medicationsArray.length} medication(s)
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(scan.scan_date).toLocaleDateString()}
-                    </div>
-                    {scan.extracted_medications && scan.extracted_medications.length > 0 && (
-                      <p className="text-sm text-gray-600">
-                        Found {scan.extracted_medications.length} medication(s)
-                      </p>
-                    )}
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {scan.image_url && (
+                  
+                  <div className="flex items-center gap-2">
+                    {scan.image_url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(scan.image_url, '_blank')}
+                      >
+                        View Image
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(scan.image_url, '_blank')}
+                      onClick={() => handleDeleteScan(scan.id)}
+                      className="text-red-500 hover:text-red-700"
                     >
-                      View Image
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteScan(scan.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              
-              {scan.extracted_medications && scan.extracted_medications.length > 0 && (
-                <div className="mt-3 pt-3 border-t">
-                  <h5 className="text-sm font-medium mb-2">Extracted Medications:</h5>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {scan.extracted_medications.map((med: any, index: number) => (
-                      <div key={index} className="text-sm p-2 bg-gray-50 rounded">
-                        <p className="font-medium">{med.medication_name}</p>
-                        {med.dosage && <p className="text-gray-600">{med.dosage}</p>}
-                      </div>
-                    ))}
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+                
+                {medicationsArray.length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <h5 className="text-sm font-medium mb-2">Extracted Medications:</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {medicationsArray.map((med: any, index: number) => (
+                        <div key={index} className="text-sm p-2 bg-gray-50 rounded">
+                          <p className="font-medium">{med.medication_name}</p>
+                          {med.dosage && <p className="text-gray-600">{med.dosage}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { uploadImage } from '@/services/secureStorageService';
 import { MedicationFormData } from '@/types/medication';
@@ -54,7 +55,7 @@ export const processPrescriptionWithOCR = async (
   try {
     console.log('Invoking prescription-ocr-gemini function with:', { scanId, imageUrl, userId });
     
-    // Create a timeout promise
+    // Create a timeout promise that rejects
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Processing timed out after 30 seconds')), 30000);
     });
@@ -69,7 +70,7 @@ export const processPrescriptionWithOCR = async (
     });
 
     // Race between timeout and function invocation
-    const response = await Promise.race([invokePromise, timeoutPromise]);
+    const response = await Promise.race([invokePromise, timeoutPromise]) as Awaited<typeof invokePromise>;
     
     console.log('Edge function response:', response);
 

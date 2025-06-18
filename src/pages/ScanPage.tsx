@@ -15,37 +15,6 @@ import { addMedication, addMultipleMedications, processAIMedicationData } from "
 import { MedicationFormData, OcrMedicationData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 
-async function callEdgeFn(path: string, body: Record<string, any>) {
-  try {
-    // Get the current supabase session and token
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || '';
-    const apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbmVkY2RqY2t3Y3Zxam9hZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzMzMTEsImV4cCI6MjA2MDkwOTMxMX0.7qkDnR3xC6QiBua9wG5cBC0Y9mWJL7ZXOg555FxlG8o";
-    
-    const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": token ? `Bearer ${token}` : '',
-        "apikey": apikey
-      },
-      body: JSON.stringify(body),
-    });
-    
-    if (!res.ok) {
-      const responseData = await res.json();
-      console.error("API Error:", res.status, responseData);
-      throw new Error(`API error: ${res.status}`);
-    }
-    
-    return res.json();
-  } catch (error) {
-    console.error("Error in callEdgeFn:", error);
-    throw error;
-  }
-}
-
 export default function ScanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -77,7 +46,7 @@ export default function ScanPage() {
 
       reader.onload = () => {
         setImage(reader.result as string);
-        setError(null); // Clear any previous errors
+        setError(null);
         setMedicationAdded(false);
         setOcrResult(null);
         setAiResult(null);
@@ -89,7 +58,6 @@ export default function ScanPage() {
   };
 
   const handleCameraClick = () => {
-    // Trigger the camera input
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
     }
@@ -103,7 +71,6 @@ export default function ScanPage() {
     setError(null);
     setMedicationAdded(false);
     
-    // Reset file inputs
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
@@ -129,7 +96,6 @@ export default function ScanPage() {
       await addMedication(user.id, manualForm);
       toast.success("Medication added successfully!");
       
-      // Reset form
       setManualForm({
         name: "",
         dosage: "",
@@ -138,7 +104,6 @@ export default function ScanPage() {
         startDate: new Date().toISOString().split('T')[0]
       });
       
-      // Navigate to dashboard
       navigate("/dashboard");
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
@@ -148,7 +113,11 @@ export default function ScanPage() {
   };
 
   const handleScan = async () => {
-    if (!image) return;
+    if (!image || !user) {
+      toast.error("Please make sure you're logged in and have selected an image");
+      return;
+    }
+    
     setScanning(true);
     setOcrResult(null);
     setAiResult(null);
@@ -157,29 +126,44 @@ export default function ScanPage() {
     setMedicationAdded(false);
 
     try {
-      toast("Extracting text with OCR...");
+      toast("Processing prescription with AI...");
       const imageBase64 = getBase64Content(image);
       
-      // Call the OCR edge function
-      const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
-      setOcrResult(ocrData.text);
-      console.log("OCR Results:", ocrData);
-      toast.success("Text extracted!");
+      // Use Supabase functions.invoke instead of direct fetch
+      const { data, error } = await supabase.functions.invoke('prescription-ocr-gemini', {
+        body: {
+          imageUrl: image,
+          userId: user.id,
+          scanId: crypto.randomUUID() // Generate a temporary scan ID
+        }
+      });
 
-      toast("Analyzing with AI...");
-      // Call the AI analysis edge function
-      const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
-      setAiResult(aiData.result);
-      console.log("AI Results:", aiData);
-      toast.success("Medication info extracted!");
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw new Error(error.message || "Failed to process prescription");
+      }
+
+      console.log("OCR Results:", data);
       
-      // Process the extracted medication data
-      const medicationData = await processAIMedicationData(aiData.result);
-      setExtractedMedications(medicationData);
-      console.log("Processed medication data:", medicationData);
-      
-      if (medicationData.length === 0) {
-        toast.warning("No medications could be detected. Please try again or enter manually.");
+      if (data.success) {
+        setOcrResult(data.extractedText);
+        setAiResult(data.extractedMedications);
+        toast.success("Prescription processed successfully!");
+        
+        // Process the extracted medication data
+        if (data.extractedMedications && data.extractedMedications.length > 0) {
+          const medicationData = await processAIMedicationData(data.extractedMedications);
+          setExtractedMedications(medicationData);
+          console.log("Processed medication data:", medicationData);
+          
+          if (medicationData.length === 0) {
+            toast.warning("No medications could be detected. Please try again or enter manually.");
+          }
+        } else {
+          toast.warning("No medications could be detected. Please try again or enter manually.");
+        }
+      } else {
+        throw new Error(data.error || "Failed to extract prescription info.");
       }
     } catch (err: any) {
       console.error("Error scanning:", err);
@@ -199,13 +183,11 @@ export default function ScanPage() {
     try {
       setAddingMedication(true);
       
-      // Use the processed medications data
       if (extractedMedications.length > 0) {
         await addMultipleMedications(user.id, extractedMedications);
         toast.success("Medications added to your dashboard!");
         setMedicationAdded(true);
       } else {
-        // Fallback to processing the AI result again
         const medicationData = await processAIMedicationData(aiResult);
         
         if (medicationData.length > 0) {
@@ -323,7 +305,7 @@ export default function ScanPage() {
                     
                     <Button
                       onClick={handleScan}
-                      disabled={scanning}
+                      disabled={scanning || !user}
                       className="bg-medsnap-blue hover:bg-blue-600"
                     >
                       {scanning ? "Processing..." : "Process Image"}

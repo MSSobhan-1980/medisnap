@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Medication } from '@/types/medication';
 import { getMedications, updateMedicationStatus, deleteMedication as deleteUserMedication } from '@/services/medicationService';
@@ -11,6 +11,8 @@ export function useMedications() {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const channelRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
 
   useEffect(() => {
     const fetchMedications = async () => {
@@ -39,10 +41,10 @@ export function useMedications() {
   }, [user, activeMember]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || isSubscribedRef.current) return;
 
     // Create a unique channel name to avoid conflicts
-    const channelName = `medications-${user.id}-${activeMember?.id || 'self'}-${Date.now()}`;
+    const channelName = `medications-${user.id}-${activeMember?.id || 'self'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const filter = activeMember 
       ? `user_id=eq.${user.id}&family_member_id=eq.${activeMember.id}`
       : `user_id=eq.${user.id}&family_member_id=is.null`;
@@ -69,11 +71,22 @@ export function useMedications() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Medication subscription status:", status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true;
+        }
+      });
+
+    channelRef.current = channel;
 
     return () => {
       console.log("Cleaning up real-time subscription");
-      channel.unsubscribe();
+      if (channelRef.current && isSubscribedRef.current) {
+        channelRef.current.unsubscribe();
+        isSubscribedRef.current = false;
+        channelRef.current = null;
+      }
     };
   }, [user, activeMember]);
 

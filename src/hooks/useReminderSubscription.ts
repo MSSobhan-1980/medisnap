@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MedicationReminder } from '@/types/reminders';
 
@@ -10,11 +10,14 @@ export const useReminderSubscription = (
   familyMemberId: string | undefined | null,
   onUpdate: ReminderUpdateCallback
 ) => {
+  const channelRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
+
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || isSubscribedRef.current) return;
 
     // Create a unique channel name to avoid conflicts
-    const channelName = `reminders-${userId}-${familyMemberId || 'null'}-${Date.now()}`;
+    const channelName = `reminders-${userId}-${familyMemberId || 'null'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const filter = familyMemberId 
       ? `user_id=eq.${userId}&family_member_id=eq.${familyMemberId}`
       : `user_id=eq.${userId}&family_member_id=is.null`;
@@ -55,11 +58,22 @@ export const useReminderSubscription = (
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Reminder subscription status:", status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribedRef.current = true;
+        }
+      });
+
+    channelRef.current = channel;
 
     return () => {
       console.log("Cleaning up reminders subscription");
-      channel.unsubscribe();
+      if (channelRef.current && isSubscribedRef.current) {
+        channelRef.current.unsubscribe();
+        isSubscribedRef.current = false;
+        channelRef.current = null;
+      }
     };
   }, [userId, familyMemberId, onUpdate]);
 };

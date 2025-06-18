@@ -9,256 +9,389 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      caregiver_relationships: {
+      achievements: {
         Row: {
-          caregiver_id: string
+          application_id: number
+          badge_url: string
           created_at: string
-          dependent_id: string
-          id: string
+          description: string
+          id: number
+          name: string
+          updated_at: string
         }
         Insert: {
-          caregiver_id: string
+          application_id: number
+          badge_url: string
           created_at?: string
-          dependent_id: string
-          id?: string
+          description: string
+          id?: number
+          name: string
+          updated_at?: string
         }
         Update: {
-          caregiver_id?: string
+          application_id?: number
+          badge_url?: string
           created_at?: string
-          dependent_id?: string
-          id?: string
-        }
-        Relationships: []
-      }
-      family_members: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          id: string
-          name: string
-          primary_user_id: string
-          relationship: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          id?: string
-          name: string
-          primary_user_id: string
-          relationship: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          id?: string
+          description?: string
+          id?: number
           name?: string
-          primary_user_id?: string
-          relationship?: string
-        }
-        Relationships: []
-      }
-      meal_detections: {
-        Row: {
-          analysis: Json | null
-          created_at: string
-          id: string
-          image_url: string | null
-          user_id: string
-        }
-        Insert: {
-          analysis?: Json | null
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          user_id: string
-        }
-        Update: {
-          analysis?: Json | null
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      medication_reminders: {
-        Row: {
-          created_at: string
-          family_member_id: string | null
-          id: string
-          is_enabled: boolean | null
-          medication_id: string
-          reminder_time: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          family_member_id?: string | null
-          id?: string
-          is_enabled?: boolean | null
-          medication_id: string
-          reminder_time: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          family_member_id?: string | null
-          id?: string
-          is_enabled?: boolean | null
-          medication_id?: string
-          reminder_time?: string
-          user_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "medication_reminders_family_member_id_fkey"
-            columns: ["family_member_id"]
+            foreignKeyName: "achievements_application_id_fkey"
+            columns: ["application_id"]
             isOneToOne: false
-            referencedRelation: "family_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "medication_reminders_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "medications"
+            referencedRelation: "applications"
             referencedColumns: ["id"]
           },
         ]
       }
-      medications: {
+      application_user_data: {
         Row: {
+          application_id: number
           created_at: string
-          dosage: string
-          end_date: string | null
-          family_member_id: string | null
-          frequency: string
+          data: Json
           id: string
-          instructions: string | null
-          name: string
-          notes: string | null
-          start_date: string
-          status: string | null
-          time: string
-          timing: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          application_id: number
           created_at?: string
-          dosage: string
-          end_date?: string | null
-          family_member_id?: string | null
-          frequency: string
+          data?: Json
           id?: string
-          instructions?: string | null
-          name: string
-          notes?: string | null
-          start_date?: string
-          status?: string | null
-          time: string
-          timing?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          application_id?: number
           created_at?: string
-          dosage?: string
-          end_date?: string | null
-          family_member_id?: string | null
-          frequency?: string
+          data?: Json
           id?: string
-          instructions?: string | null
-          name?: string
-          notes?: string | null
-          start_date?: string
-          status?: string | null
-          time?: string
-          timing?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "medications_family_member_id_fkey"
-            columns: ["family_member_id"]
+            foreignKeyName: "application_user_data_application_id_fkey"
+            columns: ["application_id"]
             isOneToOne: false
-            referencedRelation: "family_members"
+            referencedRelation: "applications"
             referencedColumns: ["id"]
           },
         ]
+      }
+      applications: {
+        Row: {
+          base_price_monthly: number
+          created_at: string
+          description: string
+          icon_url: string
+          id: number
+          landing_page_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          base_price_monthly: number
+          created_at?: string
+          description: string
+          icon_url: string
+          id?: number
+          landing_page_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          base_price_monthly?: number
+          created_at?: string
+          description?: string
+          icon_url?: string
+          id?: number
+          landing_page_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
-          full_name: string | null
+          first_name: string | null
           id: string
-          username: string | null
+          last_name: string | null
+          preferred_language: string
+          role: string | null
+          updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
-          full_name?: string | null
+          first_name?: string | null
           id: string
-          username?: string | null
+          last_name?: string | null
+          preferred_language?: string
+          role?: string | null
+          updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
-          full_name?: string | null
+          first_name?: string | null
           id?: string
-          username?: string | null
+          last_name?: string | null
+          preferred_language?: string
+          role?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
-      user_consents: {
-        Row: {
-          consent_id: string
-          feature_id: string
-          granted: boolean
-          granted_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          consent_id: string
-          feature_id: string
-          granted?: boolean
-          granted_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          consent_id?: string
-          feature_id?: string
-          granted?: boolean
-          granted_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_roles: {
+      saved_remedies: {
         Row: {
           created_at: string
           id: string
-          role: string
+          personal_notes: string | null
+          remedy_details: Json
+          remedy_name: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          role: string
+          personal_notes?: string | null
+          remedy_details: Json
+          remedy_name: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          role?: string
+          personal_notes?: string | null
+          remedy_details?: Json
+          remedy_name?: string
           user_id?: string
         }
         Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string
+          id: number
+          interval: string
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: number
+          interval: string
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: number
+          interval?: string
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      symptom_sessions: {
+        Row: {
+          ai_analysis: string | null
+          created_at: string
+          id: string
+          identified_issues: Json | null
+          recommended_remedies: Json | null
+          selected_symptoms: string[]
+          session_date: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_analysis?: string | null
+          created_at?: string
+          id?: string
+          identified_issues?: Json | null
+          recommended_remedies?: Json | null
+          selected_symptoms: string[]
+          session_date?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_analysis?: string | null
+          created_at?: string
+          id?: string
+          identified_issues?: Json | null
+          recommended_remedies?: Json | null
+          selected_symptoms?: string[]
+          session_date?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: number
+          created_at: string
+          earned_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: number
+          created_at?: string
+          earned_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: number
+          created_at?: string
+          earned_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_health_profiles: {
+        Row: {
+          age: number | null
+          allergies: string[] | null
+          created_at: string
+          gender: string | null
+          id: string
+          medical_conditions: string[] | null
+          preferred_remedy_types: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          allergies?: string[] | null
+          created_at?: string
+          gender?: string | null
+          id?: string
+          medical_conditions?: string[] | null
+          preferred_remedy_types?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          allergies?: string[] | null
+          created_at?: string
+          gender?: string | null
+          id?: string
+          medical_conditions?: string[] | null
+          preferred_remedy_types?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_remedy_interactions: {
+        Row: {
+          created_at: string
+          id: string
+          interaction_type: string
+          notes: string | null
+          rating: number | null
+          remedy_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interaction_type: string
+          notes?: string | null
+          rating?: number | null
+          remedy_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          notes?: string | null
+          rating?: number | null
+          remedy_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          application_id: number
+          created_at: string
+          end_date: string | null
+          id: string
+          start_date: string
+          status: string
+          stripe_subscription_id: string | null
+          subscription_plan_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_id: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          start_date?: string
+          status: string
+          stripe_subscription_id?: string | null
+          subscription_plan_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_id?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          start_date?: string
+          status?: string
+          stripe_subscription_id?: string | null
+          subscription_plan_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

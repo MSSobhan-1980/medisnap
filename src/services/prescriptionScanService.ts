@@ -54,28 +54,50 @@ export const processPrescriptionWithOCR = async (
   try {
     console.log('Invoking prescription-ocr-gemini function with:', { scanId, imageUrl, userId });
     
+    // Set a shorter timeout and better error handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     const response = await supabase.functions.invoke('prescription-ocr-gemini', {
       body: {
         scanId,
         imageUrl,
         userId
-      }
+      },
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     console.log('Edge function response:', response);
 
     if (response.error) {
       console.error('Edge function error:', response.error);
-      throw new Error(`Edge function error: ${response.error.message || 'Unknown error'}`);
+      
+      // Check if it's a network/fetch error
+      if (response.error.message?.includes('fetch') || response.error.message?.includes('network')) {
+        throw new Error('Network connection failed. Please check your internet connection and try again.');
+      }
+      
+      throw new Error(`Processing failed: ${response.error.message || 'Unknown error'}`);
     }
 
     if (!response.data) {
-      throw new Error('No data returned from edge function');
+      throw new Error('No data returned from processing service');
     }
 
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing prescription with OCR:', error);
+    
+    // Handle different types of errors with specific messages
+    if (error.name === 'AbortError') {
+      throw new Error('Processing timed out. Please try again with a clearer image.');
+    }
+    
+    if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+      throw new Error('Unable to connect to processing service. Please check your internet connection and try again.');
+    }
+    
     throw error;
   }
 };

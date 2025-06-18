@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { useState, useRef } from "react";
-import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
+import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check, Wifi, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -146,9 +146,9 @@ export default function ScanPage() {
       // Create scan record
       const scan = await createPrescriptionScan(user.id, imageUrl);
       
-      toast("Processing with AI... This may take a moment");
+      toast("Processing with AI... This may take up to 30 seconds");
       
-      // Process with OCR - with better error handling
+      // Process with OCR - with improved error handling
       try {
         const result = await processPrescriptionWithOCR(scan.id, imageUrl, user.id);
         
@@ -172,19 +172,8 @@ export default function ScanPage() {
         }
       } catch (ocrError: any) {
         console.error("OCR processing error:", ocrError);
-        
-        // Provide more specific error messages
-        if (ocrError.message?.includes('fetch')) {
-          setError("Network error: Unable to connect to the processing service. Please check your internet connection and try again.");
-        } else if (ocrError.message?.includes('timeout')) {
-          setError("Processing timeout: The image took too long to process. Please try with a clearer or smaller image.");
-        } else if (ocrError.message?.includes('API')) {
-          setError("API error: There's an issue with the AI processing service. Please try manual entry instead.");
-        } else {
-          setError(`Processing failed: ${ocrError.message || 'Unknown error occurred'}`);
-        }
-        
-        toast.error("Failed to process prescription. You can still add medications manually.");
+        setError(ocrError.message || 'Processing failed');
+        toast.error("Processing failed. Please try manual entry instead.");
       }
       
     } catch (err: any) {
@@ -309,13 +298,13 @@ export default function ScanPage() {
                   <div className="mt-4 flex flex-col gap-4">
                     {error && (
                       <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
+                        <WifiOff className="h-4 w-4" />
                         <AlertTitle>Processing Error</AlertTitle>
                         <AlertDescription>
                           {error}
                           <br />
-                          <span className="text-sm mt-2 block">
-                            You can still add medications manually using the "Manual Entry" tab.
+                          <span className="text-sm mt-2 block font-medium">
+                            You can add medications manually using the "Manual Entry" tab above.
                           </span>
                         </AlertDescription>
                       </Alert>
@@ -326,7 +315,14 @@ export default function ScanPage() {
                       disabled={scanning}
                       className="bg-medsnap-blue hover:bg-blue-600"
                     >
-                      {scanning ? "Processing..." : "Process Image"}
+                      {scanning ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        "Process Image"
+                      )}
                     </Button>
                     
                     {ocrResult && (

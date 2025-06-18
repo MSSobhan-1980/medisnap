@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { useState, useRef } from "react";
 import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
@@ -10,16 +9,58 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
-import { PrescriptionScanner } from "@/components/prescription/PrescriptionScanner";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { addMedication, addMultipleMedications, processAIMedicationData } from "@/services/medicationService";
 import { MedicationFormData, OcrMedicationData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
 
+async function callEdgeFn(path: string, body: Record<string, any>) {
+  try {
+    // Get the current supabase session and token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    const apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbmVkY2RqY2t3Y3Zxam9hZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzMzMTEsImV4cCI6MjA2MDkwOTMxMX0.7qkDnR3xC6QiBua9wG5cBC0Y9mWJL7ZXOg555FxlG8o";
+    
+    const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : '',
+        "apikey": apikey
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const responseData = await res.json();
+      console.error("API Error:", res.status, responseData);
+      throw new Error(`API error: ${res.status}`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error("Error in callEdgeFn:", error);
+    throw error;
+  }
+}
+
 export default function ScanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("scan");
+  const [image, setImage] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [ocrResult, setOcrResult] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<any>(null);
+  const [extractedMedications, setExtractedMedications] = useState<MedicationFormData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [addingMedication, setAddingMedication] = useState(false);
+  const [medicationAdded, setMedicationAdded] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [manualForm, setManualForm] = useState<MedicationFormData>({
     name: "",
@@ -28,6 +69,48 @@ export default function ScanPage() {
     time: "08:00",
     startDate: new Date().toISOString().split('T')[0]
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        setImage(reader.result as string);
+        setError(null); // Clear any previous errors
+        setMedicationAdded(false);
+        setOcrResult(null);
+        setAiResult(null);
+        setExtractedMedications([]);
+      };
+
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCameraClick = () => {
+    // Trigger the camera input
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+
+  const clearImage = () => {
+    setImage(null);
+    setOcrResult(null);
+    setAiResult(null);
+    setExtractedMedications([]);
+    setError(null);
+    setMedicationAdded(false);
+    
+    // Reset file inputs
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  function getBase64Content(dataUrl: string) {
+    return dataUrl.substring(dataUrl.indexOf(",") + 1);
+  }
 
   const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -42,6 +125,7 @@ export default function ScanPage() {
     }
 
     try {
+      setAddingMedication(true);
       await addMedication(user.id, manualForm);
       toast.success("Medication added successfully!");
       
@@ -58,12 +142,85 @@ export default function ScanPage() {
       navigate("/dashboard");
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
+    } finally {
+      setAddingMedication(false);
     }
   };
 
-  const handleMedicationsAdded = () => {
-    // Refresh or navigate as needed
-    navigate("/dashboard");
+  const handleScan = async () => {
+    if (!image) return;
+    setScanning(true);
+    setOcrResult(null);
+    setAiResult(null);
+    setExtractedMedications([]);
+    setError(null);
+    setMedicationAdded(false);
+
+    try {
+      toast("Extracting text with OCR...");
+      const imageBase64 = getBase64Content(image);
+      
+      // Call the OCR edge function
+      const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
+      setOcrResult(ocrData.text);
+      console.log("OCR Results:", ocrData);
+      toast.success("Text extracted!");
+
+      toast("Analyzing with AI...");
+      // Call the AI analysis edge function
+      const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
+      setAiResult(aiData.result);
+      console.log("AI Results:", aiData);
+      toast.success("Medication info extracted!");
+      
+      // Process the extracted medication data
+      const medicationData = await processAIMedicationData(aiData.result);
+      setExtractedMedications(medicationData);
+      console.log("Processed medication data:", medicationData);
+      
+      if (medicationData.length === 0) {
+        toast.warning("No medications could be detected. Please try again or enter manually.");
+      }
+    } catch (err: any) {
+      console.error("Error scanning:", err);
+      setError(err?.message || "Failed to extract prescription info.");
+      toast.error(err?.message || "Failed to extract prescription info.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleAddMedication = async () => {
+    if (!user) {
+      toast.error("You must be logged in to add medications");
+      return;
+    }
+    
+    try {
+      setAddingMedication(true);
+      
+      // Use the processed medications data
+      if (extractedMedications.length > 0) {
+        await addMultipleMedications(user.id, extractedMedications);
+        toast.success("Medications added to your dashboard!");
+        setMedicationAdded(true);
+      } else {
+        // Fallback to processing the AI result again
+        const medicationData = await processAIMedicationData(aiResult);
+        
+        if (medicationData.length > 0) {
+          await addMultipleMedications(user.id, medicationData);
+          toast.success("Medications added to your dashboard!");
+          setMedicationAdded(true);
+        } else {
+          toast.error("No valid medication data extracted");
+        }
+      }
+    } catch (err: any) {
+      toast.error("Failed to add medication", { description: err.message });
+    } finally {
+      setAddingMedication(false);
+    }
   };
 
   return (
@@ -76,7 +233,7 @@ export default function ScanPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3 mb-8">
           <TabsTrigger value="scan">
-            <Camera className="mr-2 h-4 w-4" /> Scan Prescription
+            <Camera className="mr-2 h-4 w-4" /> Scan Medication
           </TabsTrigger>
           <TabsTrigger value="manual">
             <PlusCircle className="mr-2 h-4 w-4" /> Manual Entry
@@ -87,7 +244,165 @@ export default function ScanPage() {
         </TabsList>
         
         <TabsContent value="scan">
-          <PrescriptionScanner onMedicationsAdded={handleMedicationsAdded} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Scan Medication</CardTitle>
+              <CardDescription>
+                Upload an image of your prescription, pill bottle, or blister pack
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MedicationImageUpload />
+              {!image ? (
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50 mt-6">
+                  <div className="mb-4">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 mb-2">Drag and drop your image here or click to upload</p>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Supported formats: JPG, PNG, HEIC
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      <Button 
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Choose File
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleCameraClick}
+                      >
+                        <Camera className="mr-2 h-4 w-4" /> Take Photo
+                      </Button>
+                      <input
+                        id="file-upload"
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <img 
+                    src={image} 
+                    alt="Uploaded medication" 
+                    className="w-full h-auto max-h-[500px] object-contain rounded-lg border border-gray-200" 
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    className="absolute top-2 right-2 bg-white"
+                    onClick={clearImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <div className="mt-4 flex flex-col gap-4">
+                    {error && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>
+                          {error}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <Button
+                      onClick={handleScan}
+                      disabled={scanning}
+                      className="bg-medsnap-blue hover:bg-blue-600"
+                    >
+                      {scanning ? "Processing..." : "Process Image"}
+                    </Button>
+                    
+                    {ocrResult && (
+                      <div className="p-2 rounded border bg-gray-50 text-xs text-gray-600">
+                        <div className="font-semibold mb-1">Extracted Text:</div>
+                        <pre className="whitespace-pre-wrap">{ocrResult}</pre>
+                      </div>
+                    )}
+                    
+                    {extractedMedications.length > 0 && (
+                      <div className="p-3 rounded border bg-blue-50 border-blue-200 mt-2">
+                        <div className="font-semibold mb-2">Extracted Medications:</div>
+                        {extractedMedications.map((med, index) => (
+                          <div key={index} className="mb-2 p-2 bg-white rounded border border-blue-100">
+                            <p className="font-medium">{med.name} - {med.dosage}</p>
+                            <p className="text-xs text-gray-600">
+                              {med.frequency}, {med.instructions ? med.instructions : 'No special instructions'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {(extractedMedications.length > 0 || aiResult) && !medicationAdded && (
+                      <Button 
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        onClick={handleAddMedication}
+                        disabled={addingMedication}
+                      >
+                        {addingMedication ? "Adding..." : "Add to My Medications"}
+                      </Button>
+                    )}
+                    
+                    {medicationAdded && (
+                      <Alert className="bg-green-50 border-green-200 text-green-800">
+                        <Check className="h-4 w-4 text-green-600" />
+                        <AlertTitle>Success!</AlertTitle>
+                        <AlertDescription className="flex flex-col gap-2">
+                          <span>Medication added to your dashboard</span>
+                          <Button 
+                            variant="outline" 
+                            className="mt-2 border-green-600 text-green-600"
+                            onClick={() => navigate("/dashboard")}
+                          >
+                            View in Dashboard
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-8 bg-medsnap-blue/10 p-4 rounded-lg border border-medsnap-blue/20">
+                <h3 className="font-medium text-gray-800 mb-2">How it works</h3>
+                <ul className="space-y-2">
+                  <li className="flex items-start">
+                    <span className="text-medsnap-blue mr-2">1.</span>
+                    Upload a clear image of your medication label
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-medsnap-blue mr-2">2.</span>
+                    Our AI extracts medication details automatically
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-medsnap-blue mr-2">3.</span>
+                    Review and confirm the information
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-medsnap-blue mr-2">4.</span>
+                    Your medication is added to your scheduler
+                  </li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="manual">
@@ -195,8 +510,9 @@ export default function ScanPage() {
                   <Button 
                     type="submit" 
                     className="bg-medsnap-blue hover:bg-blue-600"
+                    disabled={addingMedication}
                   >
-                    Add Medication
+                    {addingMedication ? "Adding..." : "Add Medication"}
                   </Button>
                 </div>
               </form>

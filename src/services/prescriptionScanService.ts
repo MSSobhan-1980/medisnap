@@ -54,20 +54,23 @@ export const processPrescriptionWithOCR = async (
   try {
     console.log('Invoking prescription-ocr-gemini function with:', { scanId, imageUrl, userId });
     
-    // Set a shorter timeout and better error handling
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Processing timed out after 30 seconds')), 30000);
+    });
     
-    const response = await supabase.functions.invoke('prescription-ocr-gemini', {
+    // Create the function invoke promise
+    const invokePromise = supabase.functions.invoke('prescription-ocr-gemini', {
       body: {
         scanId,
         imageUrl,
         userId
-      },
-      signal: controller.signal
+      }
     });
 
-    clearTimeout(timeoutId);
+    // Race between timeout and function invocation
+    const response = await Promise.race([invokePromise, timeoutPromise]);
+    
     console.log('Edge function response:', response);
 
     if (response.error) {
@@ -90,7 +93,7 @@ export const processPrescriptionWithOCR = async (
     console.error('Error processing prescription with OCR:', error);
     
     // Handle different types of errors with specific messages
-    if (error.name === 'AbortError') {
+    if (error.message?.includes('timed out')) {
       throw new Error('Processing timed out. Please try again with a clearer image.');
     }
     

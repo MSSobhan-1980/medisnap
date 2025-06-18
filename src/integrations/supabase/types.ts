@@ -115,6 +115,137 @@ export type Database = {
         }
         Relationships: []
       }
+      family_members: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string
+          primary_user_id: string
+          relationship: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          primary_user_id: string
+          relationship: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          primary_user_id?: string
+          relationship?: string
+        }
+        Relationships: []
+      }
+      medication_reminders: {
+        Row: {
+          created_at: string
+          family_member_id: string | null
+          id: string
+          is_enabled: boolean
+          medication_id: string
+          reminder_time: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_member_id?: string | null
+          id?: string
+          is_enabled?: boolean
+          medication_id: string
+          reminder_time: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_member_id?: string | null
+          id?: string
+          is_enabled?: boolean
+          medication_id?: string
+          reminder_time?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_reminders_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medication_reminders_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medications: {
+        Row: {
+          created_at: string
+          dosage: string
+          end_date: string | null
+          family_member_id: string | null
+          frequency: string
+          id: string
+          instructions: string | null
+          name: string
+          notes: string | null
+          start_date: string | null
+          time: string
+          timing: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dosage: string
+          end_date?: string | null
+          family_member_id?: string | null
+          frequency: string
+          id?: string
+          instructions?: string | null
+          name: string
+          notes?: string | null
+          start_date?: string | null
+          time: string
+          timing?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: string
+          end_date?: string | null
+          family_member_id?: string | null
+          frequency?: string
+          id?: string
+          instructions?: string | null
+          name?: string
+          notes?: string | null
+          start_date?: string | null
+          time?: string
+          timing?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medications_family_member_id_fkey"
+            columns: ["family_member_id"]
+            isOneToOne: false
+            referencedRelation: "family_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -112,22 +112,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await ((supabase as any)
         .from("family_members")
         .select("*")
         .eq("primary_user_id", user.id)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true }));
 
       if (error) {
         toast.error("Error fetching family members", { description: error.message });
         return;
       }
 
-      setFamilyMembers(data || []);
+      const typedData = data as FamilyMember[];
+      setFamilyMembers(typedData || []);
       
       // If we have family members but no active member, set the first one as active
-      if (data && data.length > 0 && !activeMember) {
-        setActiveMember(data[0]);
+      if (typedData && typedData.length > 0 && !activeMember) {
+        setActiveMember(typedData[0]);
       }
     } catch (err) {
       toast.error("Unexpected error", { description: String(err) });
@@ -138,7 +139,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return { error: "Not authenticated" };
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await ((supabase as any)
         .from("family_members")
         .insert({
           name,
@@ -147,7 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           avatar_url: avatarUrl
         })
         .select()
-        .single();
+        .single());
       
       if (error) {
         toast.error("Error adding family member", { description: error.message });
@@ -167,11 +168,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return { error: "Not authenticated" };
     
     try {
-      const { error } = await supabase
+      const { error } = await ((supabase as any)
         .from("family_members")
         .update(data)
         .eq("id", id)
-        .eq("primary_user_id", user.id);
+        .eq("primary_user_id", user.id));
       
       if (error) {
         toast.error("Error updating family member", { description: error.message });
@@ -200,11 +201,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return { error: "Not authenticated" };
     
     try {
-      const { error } = await supabase
+      const { error } = await ((supabase as any)
         .from("family_members")
         .delete()
         .eq("id", id)
-        .eq("primary_user_id", user.id);
+        .eq("primary_user_id", user.id));
       
       if (error) {
         toast.error("Error deleting family member", { description: error.message });

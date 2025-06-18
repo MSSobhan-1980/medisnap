@@ -83,10 +83,10 @@ export default function DataPrivacyCenter() {
       
       // Fetch medication reminders
       try {
-        const reminderResult = await supabase
+        const reminderResult = await ((supabase as any)
           .from('medication_reminders')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id));
         
         if (reminderResult.data) {
           userData.reminders = reminderResult.data;
@@ -97,10 +97,10 @@ export default function DataPrivacyCenter() {
       
       // Fetch medications
       try {
-        const medicationResult = await supabase
+        const medicationResult = await ((supabase as any)
           .from('medications')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id));
         
         if (medicationResult.data) {
           userData.medications = medicationResult.data;

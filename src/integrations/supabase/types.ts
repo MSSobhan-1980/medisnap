@@ -142,6 +142,44 @@ export type Database = {
         }
         Relationships: []
       }
+      medication_logs: {
+        Row: {
+          id: string
+          logged_at: string
+          medication_id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          medication_id: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          medication_id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_logs_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medication_reminders: {
         Row: {
           created_at: string
@@ -249,11 +287,48 @@ export type Database = {
           },
         ]
       }
+      prescription_scans: {
+        Row: {
+          ai_analysis: Json | null
+          created_at: string
+          extracted_medications: Json | null
+          id: string
+          image_url: string
+          ocr_text: string | null
+          processing_status: string | null
+          scan_date: string
+          user_id: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          created_at?: string
+          extracted_medications?: Json | null
+          id?: string
+          image_url: string
+          ocr_text?: string | null
+          processing_status?: string | null
+          scan_date?: string
+          user_id: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          created_at?: string
+          extracted_medications?: Json | null
+          id?: string
+          image_url?: string
+          ocr_text?: string | null
+          processing_status?: string | null
+          scan_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           first_name: string | null
+          full_name: string | null
           id: string
           last_name: string | null
           preferred_language: string
@@ -264,6 +339,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           first_name?: string | null
+          full_name?: string | null
           id: string
           last_name?: string | null
           preferred_language?: string
@@ -274,6 +350,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           first_name?: string | null
+          full_name?: string | null
           id?: string
           last_name?: string | null
           preferred_language?: string

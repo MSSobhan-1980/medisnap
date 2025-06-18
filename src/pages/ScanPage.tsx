@@ -9,13 +9,42 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MedicationImageUpload from "@/components/MedicationImageUpload";
 import MedicationImageGallery from "@/components/MedicationImageGallery";
-import GeminiApiKeyInput from "@/components/GeminiApiKeyInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { addMedication, addMultipleMedications, processAIMedicationData } from "@/services/medicationService";
-import { processImageWithGemini, getStoredGeminiApiKey } from "@/services/clientOcrService";
 import { MedicationFormData, OcrMedicationData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
+
+async function callEdgeFn(path: string, body: Record<string, any>) {
+  try {
+    // Get the current supabase session and token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    const apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbmVkY2RqY2t3Y3Zxam9hZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzMzMTEsImV4cCI6MjA2MDkwOTMxMX0.7qkDnR3xC6QiBua9wG5cBC0Y9mWJL7ZXOg555FxlG8o";
+    
+    const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : '',
+        "apikey": apikey
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const responseData = await res.json();
+      console.error("API Error:", res.status, responseData);
+      throw new Error(`API error: ${res.status}`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error("Error in callEdgeFn:", error);
+    throw error;
+  }
+}
 
 export default function ScanPage() {
   const { user } = useAuth();
@@ -29,7 +58,6 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [addingMedication, setAddingMedication] = useState(false);
   const [medicationAdded, setMedicationAdded] = useState(false);
-  const [hasGeminiKey, setHasGeminiKey] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +77,7 @@ export default function ScanPage() {
 
       reader.onload = () => {
         setImage(reader.result as string);
-        setError(null);
+        setError(null); // Clear any previous errors
         setMedicationAdded(false);
         setOcrResult(null);
         setAiResult(null);
@@ -61,6 +89,7 @@ export default function ScanPage() {
   };
 
   const handleCameraClick = () => {
+    // Trigger the camera input
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
     }
@@ -74,9 +103,14 @@ export default function ScanPage() {
     setError(null);
     setMedicationAdded(false);
     
+    // Reset file inputs
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
+
+  function getBase64Content(dataUrl: string) {
+    return dataUrl.substring(dataUrl.indexOf(",") + 1);
+  }
 
   const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -95,6 +129,7 @@ export default function ScanPage() {
       await addMedication(user.id, manualForm);
       toast.success("Medication added successfully!");
       
+      // Reset form
       setManualForm({
         name: "",
         dosage: "",
@@ -103,6 +138,7 @@ export default function ScanPage() {
         startDate: new Date().toISOString().split('T')[0]
       });
       
+      // Navigate to dashboard
       navigate("/dashboard");
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
@@ -112,11 +148,7 @@ export default function ScanPage() {
   };
 
   const handleScan = async () => {
-    if (!image || !user) {
-      toast.error("Please make sure you're logged in and have selected an image");
-      return;
-    }
-    
+    if (!image) return;
     setScanning(true);
     setOcrResult(null);
     setAiResult(null);
@@ -125,61 +157,29 @@ export default function ScanPage() {
     setMedicationAdded(false);
 
     try {
-      toast("Processing prescription with AI...");
+      toast("Extracting text with OCR...");
+      const imageBase64 = getBase64Content(image);
       
-      // Try client-side Gemini first if API key is available
-      if (hasGeminiKey && getStoredGeminiApiKey()) {
-        console.log("Using client-side Gemini OCR...");
-        const geminiResult = await processImageWithGemini(image, user.id);
-        
-        if (geminiResult.success) {
-          setOcrResult(geminiResult.extractedText);
-          setExtractedMedications(geminiResult.extractedMedications);
-          toast.success("Prescription processed successfully with Gemini!");
-          return;
-        } else {
-          console.error("Gemini failed:", geminiResult.error);
-          toast.warning("Gemini processing failed, trying edge functions...");
-        }
-      }
+      // Call the OCR edge function
+      const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
+      setOcrResult(ocrData.text);
+      console.log("OCR Results:", ocrData);
+      toast.success("Text extracted!");
 
-      // Fallback to edge functions
-      try {
-        console.log("Trying edge function OCR...");
-        const { data, error } = await supabase.functions.invoke('prescription-ocr-openai', {
-          body: {
-            imageData: image,
-            userId: user.id
-          }
-        });
-
-        if (error) {
-          console.error("Edge function error:", error);
-          throw error;
-        }
-
-        if (data && data.success) {
-          console.log("Edge function OCR Results:", data);
-          setOcrResult(data.extractedText);
-          setAiResult(data.extractedMedications);
-          toast.success("Prescription processed successfully!");
-          
-          if (data.extractedMedications && data.extractedMedications.length > 0) {
-            const medicationData = await processAIMedicationData(data.extractedMedications);
-            setExtractedMedications(medicationData);
-            console.log("Processed medication data:", medicationData);
-            
-            if (medicationData.length === 0) {
-              toast.warning("No medications could be detected. Please try again or enter manually.");
-            }
-          } else {
-            toast.warning("No medications could be detected. Please try again or enter manually.");
-          }
-          return;
-        }
-      } catch (edgeFunctionError) {
-        console.error("Edge function failed:", edgeFunctionError);
-        throw new Error("All OCR methods failed. Please check your API configuration or try manual entry.");
+      toast("Analyzing with AI...");
+      // Call the AI analysis edge function
+      const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
+      setAiResult(aiData.result);
+      console.log("AI Results:", aiData);
+      toast.success("Medication info extracted!");
+      
+      // Process the extracted medication data
+      const medicationData = await processAIMedicationData(aiData.result);
+      setExtractedMedications(medicationData);
+      console.log("Processed medication data:", medicationData);
+      
+      if (medicationData.length === 0) {
+        toast.warning("No medications could be detected. Please try again or enter manually.");
       }
     } catch (err: any) {
       console.error("Error scanning:", err);
@@ -199,11 +199,13 @@ export default function ScanPage() {
     try {
       setAddingMedication(true);
       
+      // Use the processed medications data
       if (extractedMedications.length > 0) {
         await addMultipleMedications(user.id, extractedMedications);
         toast.success("Medications added to your dashboard!");
         setMedicationAdded(true);
       } else {
+        // Fallback to processing the AI result again
         const medicationData = await processAIMedicationData(aiResult);
         
         if (medicationData.length > 0) {
@@ -250,8 +252,6 @@ export default function ScanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <GeminiApiKeyInput onApiKeySet={setHasGeminiKey} />
-              
               <MedicationImageUpload />
               {!image ? (
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-10 bg-gray-50 mt-6">
@@ -323,7 +323,7 @@ export default function ScanPage() {
                     
                     <Button
                       onClick={handleScan}
-                      disabled={scanning || !user}
+                      disabled={scanning}
                       className="bg-medsnap-blue hover:bg-blue-600"
                     >
                       {scanning ? "Processing..." : "Process Image"}

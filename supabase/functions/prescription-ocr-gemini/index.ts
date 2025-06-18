@@ -14,131 +14,86 @@ serve(async (req) => {
   }
 
   try {
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      console.error('OPENAI_API_KEY not configured');
-      throw new Error('OPENAI_API_KEY not configured');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY not configured');
     }
-
-    console.log('OpenAI API Key found, processing request...');
-
-    const requestBody = await req.json();
-    const { imageUrl, userId, scanId } = requestBody;
-
-    console.log('Processing prescription OCR request:', { userId, scanId });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Create a scan record if scanId is not provided
-    let actualScanId = scanId;
-    if (!actualScanId) {
-      const { data: scanData, error: scanError } = await supabase
-        .from('prescription_scans')
-        .insert({
-          user_id: userId,
-          image_url: imageUrl,
-          processing_status: 'processing'
-        })
-        .select()
-        .single();
+    const { imageUrl, userId, scanId } = await req.json();
 
-      if (scanError) {
-        console.error('Error creating scan record:', scanError);
-        throw new Error('Failed to create scan record');
-      }
-      
-      actualScanId = scanData.id;
-    } else {
-      // Update existing scan to processing
-      await supabase
-        .from('prescription_scans')
-        .update({ processing_status: 'processing' })
-        .eq('id', actualScanId);
-    }
+    console.log('Processing prescription OCR for scan:', scanId);
 
-    // Extract base64 content from data URL
-    let base64Image;
-    if (imageUrl.startsWith('data:image/')) {
-      base64Image = imageUrl.split(',')[1];
-    } else {
-      // If it's a URL, fetch the image and convert to base64
-      console.log('Fetching image from URL:', imageUrl);
-      const imageResponse = await fetch(imageUrl);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
-      }
-      
-      const imageBuffer = await imageResponse.arrayBuffer();
-      base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
-    }
+    // Update status to processing
+    await supabase
+      .from('prescription_scans')
+      .update({ processing_status: 'processing' })
+      .eq('id', scanId);
 
-    // Prepare OpenAI API request with GPT-4o
-    const openaiPayload = {
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analyze this prescription image and extract all medication information. Return the data in this exact JSON format:
-              [
-                {
-                  "medication_name": "exact name from prescription",
-                  "generic_name": "generic name if available",
-                  "dosage": "dosage with units",
-                  "dosing_pattern": "pattern like 1+0+1 (morning+noon+evening)",
-                  "frequency": "frequency description",
-                  "instructions": "any special instructions",
-                  "timing": "before_food/with_food/after_food if mentioned"
-                }
-              ]
-              
-              Be very accurate with medication names and dosages. If you can't read something clearly, note it as "unclear". Focus only on medications, not other text.`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+    // Fetch image and convert to base64
+    const imageResponse = await fetch(imageUrl);
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+
+    // Prepare Gemini API request
+    const geminiPayload = {
+      contents: [{
+        parts: [
+          {
+            text: `Analyze this prescription image and extract all medication information. Return the data in this exact JSON format:
+            [
+              {
+                "medication_name": "exact name from prescription",
+                "generic_name": "generic name if available",
+                "dosage": "dosage with units",
+                "dosing_pattern": "pattern like 1+0+1 (morning+noon+evening)",
+                "frequency": "frequency description",
+                "instructions": "any special instructions",
+                "timing": "before_food/with_food/after_food if mentioned"
               }
+            ]
+            
+            Be very accurate with medication names and dosages. If you can't read something clearly, note it as "unclear". Focus only on medications, not other text.`
+          },
+          {
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: base64Image
             }
-          ]
-        }
-      ],
-      max_tokens: 2048,
-      temperature: 0.1
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        topK: 32,
+        topP: 1,
+        maxOutputTokens: 2048,
+      }
     };
 
-    // Call OpenAI API
-    console.log('Calling OpenAI API with GPT-4o...');
-    const openaiResponse = await fetch(
-      'https://api.openai.com/v1/chat/completions',
+    // Call Gemini API
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(openaiPayload),
+        body: JSON.stringify(geminiPayload),
       }
     );
 
-    const openaiData = await openaiResponse.json();
-    console.log('OpenAI response status:', openaiResponse.status);
+    const geminiData = await geminiResponse.json();
+    console.log('Gemini response:', geminiData);
 
-    if (!openaiResponse.ok) {
-      console.error('OpenAI API error:', openaiData);
-      throw new Error(`OpenAI API error: ${openaiData.error?.message || 'Unknown error'}`);
+    if (!geminiData.candidates || !geminiData.candidates[0]) {
+      throw new Error('No response from Gemini API');
     }
 
-    if (!openaiData.choices || !openaiData.choices[0]) {
-      throw new Error('No response from OpenAI API');
-    }
-
-    const extractedText = openaiData.choices[0].message.content;
-    console.log('Extracted text length:', extractedText.length);
+    const extractedText = geminiData.candidates[0].content.parts[0].text;
     
     // Try to parse JSON from the response
     let extractedMedications = [];
@@ -147,7 +102,6 @@ serve(async (req) => {
       const jsonMatch = extractedText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         extractedMedications = JSON.parse(jsonMatch[0]);
-        console.log('Parsed medications:', extractedMedications.length);
       }
     } catch (parseError) {
       console.error('Error parsing extracted medications:', parseError);
@@ -168,14 +122,13 @@ serve(async (req) => {
       .from('prescription_scans')
       .update({
         ocr_text: extractedText,
-        ai_analysis: openaiData,
+        ai_analysis: geminiData,
         extracted_medications: extractedMedications,
         processing_status: 'completed'
       })
-      .eq('id', actualScanId);
+      .eq('id', scanId);
 
     if (updateError) {
-      console.error('Error updating scan record:', updateError);
       throw updateError;
     }
 
@@ -186,7 +139,7 @@ serve(async (req) => {
         success: true,
         extractedText,
         extractedMedications,
-        scanId: actualScanId
+        scanId
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -195,6 +148,23 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in prescription OCR:', error);
+
+    // Try to update status to failed if we have the scanId
+    try {
+      const { scanId } = await req.json();
+      if (scanId) {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        await supabase
+          .from('prescription_scans')
+          .update({ processing_status: 'failed' })
+          .eq('id', scanId);
+      }
+    } catch (updateError) {
+      console.error('Error updating scan status to failed:', updateError);
+    }
 
     return new Response(
       JSON.stringify({ 

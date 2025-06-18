@@ -14,9 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY not configured');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     // Parse request body once
@@ -66,68 +66,70 @@ serve(async (req) => {
     const imageBuffer = await imageResponse.arrayBuffer();
     const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
 
-    // Prepare Gemini API request
-    const geminiPayload = {
-      contents: [{
-        parts: [
-          {
-            text: `Analyze this prescription image and extract all medication information. Return the data in this exact JSON format:
-            [
-              {
-                "medication_name": "exact name from prescription",
-                "generic_name": "generic name if available",
-                "dosage": "dosage with units",
-                "dosing_pattern": "pattern like 1+0+1 (morning+noon+evening)",
-                "frequency": "frequency description",
-                "instructions": "any special instructions",
-                "timing": "before_food/with_food/after_food if mentioned"
+    // Prepare OpenAI API request
+    const openaiPayload = {
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Analyze this prescription image and extract all medication information. Return the data in this exact JSON format:
+              [
+                {
+                  "medication_name": "exact name from prescription",
+                  "generic_name": "generic name if available",
+                  "dosage": "dosage with units",
+                  "dosing_pattern": "pattern like 1+0+1 (morning+noon+evening)",
+                  "frequency": "frequency description",
+                  "instructions": "any special instructions",
+                  "timing": "before_food/with_food/after_food if mentioned"
+                }
+              ]
+              
+              Be very accurate with medication names and dosages. If you can't read something clearly, note it as "unclear". Focus only on medications, not other text.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
               }
-            ]
-            
-            Be very accurate with medication names and dosages. If you can't read something clearly, note it as "unclear". Focus only on medications, not other text.`
-          },
-          {
-            inline_data: {
-              mime_type: "image/jpeg",
-              data: base64Image
             }
-          }
-        ]
-      }],
-      generationConfig: {
-        temperature: 0.1,
-        topK: 32,
-        topP: 1,
-        maxOutputTokens: 2048,
-      }
+          ]
+        }
+      ],
+      max_tokens: 2048,
+      temperature: 0.1
     };
 
-    // Call Gemini API
-    console.log('Calling Gemini API...');
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+    // Call OpenAI API
+    console.log('Calling OpenAI API...');
+    const openaiResponse = await fetch(
+      'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(geminiPayload),
+        body: JSON.stringify(openaiPayload),
       }
     );
 
-    const geminiData = await geminiResponse.json();
-    console.log('Gemini response status:', geminiResponse.status);
+    const openaiData = await openaiResponse.json();
+    console.log('OpenAI response status:', openaiResponse.status);
 
-    if (!geminiResponse.ok) {
-      console.error('Gemini API error:', geminiData);
-      throw new Error(`Gemini API error: ${geminiData.error?.message || 'Unknown error'}`);
+    if (!openaiResponse.ok) {
+      console.error('OpenAI API error:', openaiData);
+      throw new Error(`OpenAI API error: ${openaiData.error?.message || 'Unknown error'}`);
     }
 
-    if (!geminiData.candidates || !geminiData.candidates[0]) {
-      throw new Error('No response from Gemini API');
+    if (!openaiData.choices || !openaiData.choices[0]) {
+      throw new Error('No response from OpenAI API');
     }
 
-    const extractedText = geminiData.candidates[0].content.parts[0].text;
+    const extractedText = openaiData.choices[0].message.content;
     console.log('Extracted text length:', extractedText.length);
     
     // Try to parse JSON from the response
@@ -158,7 +160,7 @@ serve(async (req) => {
       .from('prescription_scans')
       .update({
         ocr_text: extractedText,
-        ai_analysis: geminiData,
+        ai_analysis: openaiData,
         extracted_medications: extractedMedications,
         processing_status: 'completed'
       })

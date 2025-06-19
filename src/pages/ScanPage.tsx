@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { useState, useRef } from "react";
-import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check, Wifi, WifiOff } from "lucide-react";
+import { Upload, Camera, X, PlusCircle, Images, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,37 @@ import { useAuth } from "@/hooks/useAuth";
 import { addMedication, addMultipleMedications, processAIMedicationData } from "@/services/medicationService";
 import { MedicationFormData, OcrMedicationData } from "@/types/medication";
 import { useNavigate } from "react-router-dom";
-import {
-  uploadPrescriptionImage,
-  createPrescriptionScan,
-  processPrescriptionWithOCR,
-  convertScanToMedications
-} from "@/services/prescriptionScanService";
+
+async function callEdgeFn(path: string, body: Record<string, any>) {
+  try {
+    // Get the current supabase session and token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    const apikey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mbmVkY2RqY2t3Y3Zxam9hZXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDUzMzMzMTEsImV4cCI6MjA2MDkwOTMxMX0.7qkDnR3xC6QiBua9wG5cBC0Y9mWJL7ZXOg555FxlG8o";
+    
+    const url = `https://mfnedcdjckwcvqjoaevh.functions.supabase.co/${path}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token ? `Bearer ${token}` : '',
+        "apikey": apikey
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!res.ok) {
+      const responseData = await res.json();
+      console.error("API Error:", res.status, responseData);
+      throw new Error(`API error: ${res.status}`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error("Error in callEdgeFn:", error);
+    throw error;
+  }
+}
 
 export default function ScanPage() {
   const { user } = useAuth();
@@ -52,7 +77,7 @@ export default function ScanPage() {
 
       reader.onload = () => {
         setImage(reader.result as string);
-        setError(null);
+        setError(null); // Clear any previous errors
         setMedicationAdded(false);
         setOcrResult(null);
         setAiResult(null);
@@ -64,6 +89,7 @@ export default function ScanPage() {
   };
 
   const handleCameraClick = () => {
+    // Trigger the camera input
     if (cameraInputRef.current) {
       cameraInputRef.current.click();
     }
@@ -77,9 +103,14 @@ export default function ScanPage() {
     setError(null);
     setMedicationAdded(false);
     
+    // Reset file inputs
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
+
+  function getBase64Content(dataUrl: string) {
+    return dataUrl.substring(dataUrl.indexOf(",") + 1);
+  }
 
   const handleManualFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -98,6 +129,7 @@ export default function ScanPage() {
       await addMedication(user.id, manualForm);
       toast.success("Medication added successfully!");
       
+      // Reset form
       setManualForm({
         name: "",
         dosage: "",
@@ -106,6 +138,7 @@ export default function ScanPage() {
         startDate: new Date().toISOString().split('T')[0]
       });
       
+      // Navigate to dashboard
       navigate("/dashboard");
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
@@ -115,11 +148,7 @@ export default function ScanPage() {
   };
 
   const handleScan = async () => {
-    if (!image || !user) {
-      toast.error("Please select an image and make sure you're logged in");
-      return;
-    }
-
+    if (!image) return;
     setScanning(true);
     setOcrResult(null);
     setAiResult(null);
@@ -128,58 +157,34 @@ export default function ScanPage() {
     setMedicationAdded(false);
 
     try {
-      toast("Uploading prescription image...");
+      toast("Extracting text with OCR...");
+      const imageBase64 = getBase64Content(image);
       
-      // Convert image to file
-      const response = await fetch(image);
-      const blob = await response.blob();
-      const file = new File([blob], "prescription.jpg", { type: "image/jpeg" });
-      
-      // Upload image
-      const imageUrl = await uploadPrescriptionImage(file, user.id);
-      if (!imageUrl) {
-        throw new Error('Failed to upload image');
-      }
+      // Call the OCR edge function
+      const ocrData = await callEdgeFn("prescription-ocr", { imageBase64 });
+      setOcrResult(ocrData.text);
+      console.log("OCR Results:", ocrData);
+      toast.success("Text extracted!");
 
-      toast("Creating scan record...");
+      toast("Analyzing with AI...");
+      // Call the AI analysis edge function
+      const aiData = await callEdgeFn("openai-suggest", { text: ocrData.text });
+      setAiResult(aiData.result);
+      console.log("AI Results:", aiData);
+      toast.success("Medication info extracted!");
       
-      // Create scan record
-      const scan = await createPrescriptionScan(user.id, imageUrl);
+      // Process the extracted medication data
+      const medicationData = await processAIMedicationData(aiData.result);
+      setExtractedMedications(medicationData);
+      console.log("Processed medication data:", medicationData);
       
-      toast("Processing with AI... This may take up to 30 seconds");
-      
-      // Process with OCR - with improved error handling
-      try {
-        const result = await processPrescriptionWithOCR(scan.id, imageUrl, user.id);
-        
-        if (result && result.success) {
-          setOcrResult(result.extractedText || 'Text extracted successfully');
-          setAiResult(result);
-          
-          // Convert to medication format
-          if (result.extractedMedications && result.extractedMedications.length > 0) {
-            const medications = convertScanToMedications({
-              extracted_medications: result.extractedMedications
-            } as any);
-            
-            setExtractedMedications(medications);
-            toast.success("Prescription processed successfully!");
-          } else {
-            toast.warning("No medications found in the prescription. Please try manual entry.");
-          }
-        } else {
-          throw new Error(result?.error || 'Failed to process prescription');
-        }
-      } catch (ocrError: any) {
-        console.error("OCR processing error:", ocrError);
-        setError(ocrError.message || 'Processing failed');
-        toast.error("Processing failed. Please try manual entry instead.");
+      if (medicationData.length === 0) {
+        toast.warning("No medications could be detected. Please try again or enter manually.");
       }
-      
     } catch (err: any) {
       console.error("Error scanning:", err);
-      setError(err?.message || "Failed to process prescription.");
-      toast.error("Upload failed. Please try again or use manual entry.");
+      setError(err?.message || "Failed to extract prescription info.");
+      toast.error(err?.message || "Failed to extract prescription info.");
     } finally {
       setScanning(false);
     }
@@ -194,12 +199,22 @@ export default function ScanPage() {
     try {
       setAddingMedication(true);
       
+      // Use the processed medications data
       if (extractedMedications.length > 0) {
         await addMultipleMedications(user.id, extractedMedications);
         toast.success("Medications added to your dashboard!");
         setMedicationAdded(true);
       } else {
-        toast.error("No valid medication data extracted");
+        // Fallback to processing the AI result again
+        const medicationData = await processAIMedicationData(aiResult);
+        
+        if (medicationData.length > 0) {
+          await addMultipleMedications(user.id, medicationData);
+          toast.success("Medications added to your dashboard!");
+          setMedicationAdded(true);
+        } else {
+          toast.error("No valid medication data extracted");
+        }
       }
     } catch (err: any) {
       toast.error("Failed to add medication", { description: err.message });
@@ -298,14 +313,10 @@ export default function ScanPage() {
                   <div className="mt-4 flex flex-col gap-4">
                     {error && (
                       <Alert variant="destructive">
-                        <WifiOff className="h-4 w-4" />
-                        <AlertTitle>Processing Error</AlertTitle>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
                         <AlertDescription>
                           {error}
-                          <br />
-                          <span className="text-sm mt-2 block font-medium">
-                            You can add medications manually using the "Manual Entry" tab above.
-                          </span>
                         </AlertDescription>
                       </Alert>
                     )}
@@ -315,14 +326,7 @@ export default function ScanPage() {
                       disabled={scanning}
                       className="bg-medsnap-blue hover:bg-blue-600"
                     >
-                      {scanning ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Processing...
-                        </>
-                      ) : (
-                        "Process Image"
-                      )}
+                      {scanning ? "Processing..." : "Process Image"}
                     </Button>
                     
                     {ocrResult && (

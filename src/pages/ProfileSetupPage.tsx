@@ -10,8 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function ProfileSetupPage() {
   const { user, profile, loading } = useAuth();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -20,7 +20,7 @@ export default function ProfileSetupPage() {
       navigate("/auth");
     }
     // If the profile exists, skip setup
-    if (profile && profile.first_name) {
+    if (profile && profile.full_name) {
       navigate("/dashboard");
     }
   }, [user, loading, navigate, profile]);
@@ -28,7 +28,7 @@ export default function ProfileSetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    if (!firstName.trim() || !lastName.trim()) {
+    if (!fullName.trim() || !username.trim()) {
       toast.error("Both fields are required.");
       setSubmitting(false);
       return;
@@ -37,7 +37,7 @@ export default function ProfileSetupPage() {
     // Upsert profile info
     const { error } = await supabase
       .from("profiles")
-      .update({ first_name: firstName, last_name: lastName })
+      .update({ full_name: fullName, username })
       .eq("id", user.id);
 
     if (error) {
@@ -59,18 +59,18 @@ export default function ProfileSetupPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              placeholder="First Name"
-              value={firstName}
-              onChange={e => setFirstName(e.target.value)}
+              placeholder="Full Name"
+              value={fullName}
+              onChange={e => setFullName(e.target.value)}
               required
-              autoComplete="given-name"
+              autoComplete="name"
             />
             <Input
-              placeholder="Last Name"
-              value={lastName}
-              onChange={e => setLastName(e.target.value)}
+              placeholder="Username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
               required
-              autoComplete="family-name"
+              autoComplete="username"
             />
             <Button type="submit" className="w-full" disabled={submitting}>
               Save Profile

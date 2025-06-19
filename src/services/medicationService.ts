@@ -1,9 +1,10 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Medication, MedicationFormData } from "@/types/medication";
 
 export async function getMedications(userId: string, familyMemberId?: string | null): Promise<Medication[]> {
   try {
-    let query = (supabase as any)
+    let query = supabase
       .from('medications')
       .select('*')
       .eq('user_id', userId);
@@ -32,7 +33,7 @@ export async function getMedications(userId: string, familyMemberId?: string | n
       timing: med.timing as Medication['timing'],
       notes: med.notes,
       familyMemberId: med.family_member_id,
-      status: med.status as 'taken' | 'missed' | 'pending' || 'pending',
+      status: med.status as 'taken' | 'missed' | 'pending',
       updated_at: med.updated_at,
       created_at: med.created_at
     }));
@@ -48,7 +49,7 @@ export async function addMedication(userId: string, medicationData: MedicationFo
   try {
     const { name, dosage, frequency, time, instructions, startDate, endDate, timing, notes } = medicationData;
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('medications')
       .insert([
         {
@@ -63,7 +64,6 @@ export async function addMedication(userId: string, medicationData: MedicationFo
           end_date: endDate || null,
           timing,
           notes,
-          status: 'pending'
         },
       ])
       .select()
@@ -118,7 +118,7 @@ export async function updateMedication(medicationId: string, medicationData: Par
     // Set updated_at timestamp
     dbData.updated_at = new Date().toISOString();
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('medications')
       .update(dbData)
       .eq('id', medicationId)
@@ -160,7 +160,7 @@ export async function updateMedication(medicationId: string, medicationData: Par
 
 export async function updateMedicationStatus(medicationId: string, status: 'taken' | 'missed' | 'pending') {
   try {
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('medications')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', medicationId);
@@ -176,7 +176,7 @@ export async function updateMedicationStatus(medicationId: string, status: 'take
 
 export async function deleteMedication(medicationId: string): Promise<boolean> {
   try {
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('medications')
       .delete()
       .eq('id', medicationId);
@@ -308,7 +308,7 @@ export async function addMultipleMedications(userId: string, medicationsData: Me
     }));
 
     // Insert all medications at once
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('medications')
       .insert(dbMedications)
       .select();
